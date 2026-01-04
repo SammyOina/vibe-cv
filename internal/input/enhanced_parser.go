@@ -69,6 +69,11 @@ func (ep *EnhancedParser) ParseCV(content string) *StructuredCVContent {
 	cv.Education = ep.extractEducationSection(content)
 	cv.Certifications = ep.extractCertificationsSection(content)
 
+	// If no title found, use the first job title from experience
+	if cv.Title == "" && len(cv.Experience) > 0 {
+		cv.Title = cv.Experience[0].Title
+	}
+
 	return cv
 }
 

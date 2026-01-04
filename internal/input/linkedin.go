@@ -143,7 +143,8 @@ func extractName(content string) string {
 	// Look for common LinkedIn name patterns
 	patterns := []string{
 		`(?i)(?:name|profile)[\s:]*([A-Z][a-z]+\s+[A-Z][a-z]+)`,
-		`^([A-Z][a-z]+\s+[A-Z][a-z]+)[\s\n]`,
+		`^\s*([A-Z][a-z]+\s+[A-Z][a-z]+)`,
+		`(?m)^\s*([A-Z][a-z]+\s+[A-Z][a-z]+)\s*$`,
 	}
 
 	for _, pattern := range patterns {
@@ -171,6 +172,17 @@ func extractTitle(content string) string {
 			title := strings.TrimSpace(matches[1])
 			if len(title) > 0 && len(title) < 100 {
 				return title
+			}
+		}
+	}
+
+	// Fallback: Look for job title keywords on second line after name
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if i > 0 && i < 5 { // Check first few lines after the name
+			trimmed := strings.TrimSpace(line)
+			if isLikelyJobTitle(trimmed) && len(trimmed) > 0 && len(trimmed) < 100 {
+				return trimmed
 			}
 		}
 	}
