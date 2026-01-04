@@ -39,7 +39,7 @@ jobs:
         name: codecov-umbrella
     
     - name: Run linter
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v8
       with:
         version: latest
     

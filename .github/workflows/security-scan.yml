@@ -40,7 +40,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Build Docker image
-      run: docker build -t vibe-cv:scan .
+      run: docker build -f docker/Dockerfile -t vibe-cv:scan .
     
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
