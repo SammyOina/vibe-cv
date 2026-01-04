@@ -1,0 +1,127 @@
+services:
+  postgres-vibe:
+    image: postgres:16-alpine
+    container_name: vibe-cv-postgres-vibe
+    environment:
+      POSTGRES_USER: vibe_user
+      POSTGRES_PASSWORD: vibe_password
+      POSTGRES_DB: vibe_cv
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_vibe_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U vibe_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vibe-network
+
+  postgres-kratos:
+    image: postgres:16-alpine
+    container_name: vibe-cv-postgres-kratos
+    environment:
+      POSTGRES_USER: kratos_user
+      POSTGRES_PASSWORD: kratos_password
+      POSTGRES_DB: kratos
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_kratos_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U kratos_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vibe-network
+
+  kratos-migrate:
+    image: oryd/kratos:v1.1.0
+    container_name: vibe-cv-kratos-migrate
+    environment:
+      - DSN=postgres://kratos_user:kratos_password@postgres-kratos:5432/kratos?sslmode=disable
+    volumes:
+      - ./kratos.yml:/etc/config/kratos.yml
+      - ./identity.schema.json:/etc/config/identity.schema.json
+    command: -c /etc/config/kratos.yml migrate sql -e --yes
+    depends_on:
+      postgres-kratos:
+        condition: service_healthy
+    networks:
+      - vibe-network
+
+  kratos:
+    image: oryd/kratos:v1.1.0
+    container_name: vibe-cv-kratos
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "4433:4433" # public
+      - "4434:4434" # admin
+    environment:
+      - DSN=postgres://kratos_user:kratos_password@postgres-kratos:5432/kratos?sslmode=disable
+    volumes:
+      - ./kratos.yml:/etc/config/kratos.yml
+      - ./identity.schema.json:/etc/config/identity.schema.json
+    command: -c /etc/config/kratos.yml serve
+    networks:
+      - vibe-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4433/health/live" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vibe-cv:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: vibe-cv-app
+    depends_on:
+      postgres-vibe:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # LLM Configuration
+      LLM_PROVIDER: openai
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: gpt-4
+
+      # Server Configuration
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+
+      # Database Configuration
+      DATABASE_URL: postgres://vibe_user:vibe_password@postgres-vibe:5432/vibe_cv?sslmode=disable
+
+      # Kratos Configuration
+      KRATOS_ENABLED: 'true'
+      KRATOS_PUBLIC_URL: http://kratos:4433
+      KRATOS_ADMIN_URL: http://kratos:4434
+
+      # Output Configuration
+      OUTPUT_DIR: /app/outputs
+      LATEX_PATH: pdflatex
+    volumes:
+      - outputs_data:/app/outputs
+    networks:
+      - vibe-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/latest/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_vibe_data:
+  postgres_kratos_data:
+  outputs_data:
+
+
+networks:
+  vibe-network:
+    driver: bridge

@@ -1,0 +1,14 @@
+{
+  "cv": "John Doe\n\nExperience:\n- Software Engineer at TechCorp (2019-2024)\n  * Developed backend services in Python and Java\n  * Managed databases and API endpoints\n  * Worked with microservices architecture\n  * Led a team of 3 junior developers\n\n- Junior Developer at StartupXYZ (2018-2019)\n  * Built web applications with JavaScript and React\n  * Implemented RESTful APIs\n  * Participated in code reviews\n\nSkills:\n- Languages: Python, Java, JavaScript, Go\n- Databases: PostgreSQL, MongoDB, Redis\n- Tools: Docker, Kubernetes, Git\n- Cloud: AWS, GCP\n\nEducation:\n- Bachelor of Science in Computer Science (2018)",
+  "job_description": "Senior Go Developer - Cloud Infrastructure Team\n\nWe are looking for an experienced Senior Go Developer to join our cloud infrastructure team.\n\nRequirements:\n- 5+ years of software development experience\n- Strong expertise in Go programming\n- Experience with Kubernetes and container orchestration\n- Cloud platform experience (AWS/GCP/Azure)\n- Microservices architecture knowledge\n- Database design and optimization\n- Leadership and mentoring experience\n\nResponsibilities:\n- Design and implement scalable Go services\n- Lead architectural decisions for cloud infrastructure\n- Mentor junior engineers\n- Collaborate with DevOps and infrastructure teams\n- Optimize performance and reliability",
+  "additional_context": [
+    {
+      "type": "text",
+      "content": "Company focuses on cloud-native infrastructure solutions for enterprise clients. Strong emphasis on performance, scalability, and reliability."
+    }
+  ],
+  "llm_config": {
+    "provider": "openai",
+    "model": "gpt-4"
+  }
+}
