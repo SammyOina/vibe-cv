@@ -1,9 +1,12 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package batch
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -11,7 +14,7 @@ import (
 	"github.com/sammyoina/vibe-cv/internal/llm"
 )
 
-// JobQueue manages async batch jobs
+// JobQueue manages async batch jobs.
 type JobQueue struct {
 	mu       sync.RWMutex
 	repo     *db.Repository
@@ -21,7 +24,7 @@ type JobQueue struct {
 	stopChan chan struct{}
 }
 
-// NewJobQueue creates a new job queue
+// NewJobQueue creates a new job queue.
 func NewJobQueue(repo *db.Repository, workers int) *JobQueue {
 	return &JobQueue{
 		repo:     repo,
@@ -31,38 +34,39 @@ func NewJobQueue(repo *db.Repository, workers int) *JobQueue {
 	}
 }
 
-// SetProvider sets the LLM provider for batch job processing
+// SetProvider sets the LLM provider for batch job processing.
 func (q *JobQueue) SetProvider(provider llm.Provider) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	q.provider = provider
 }
 
-// Start starts the job queue workers
+// Start starts the job queue workers.
 func (q *JobQueue) Start() {
-	for i := 0; i < q.workers; i++ {
+	for range q.workers {
 		go q.worker()
 	}
 }
 
-// Stop stops the job queue workers
+// Stop stops the job queue workers.
 func (q *JobQueue) Stop() {
 	close(q.stopChan)
 }
 
-// worker processes jobs from the queue
+// worker processes jobs from the queue.
 func (q *JobQueue) worker() {
 	for {
 		select {
 		case <-q.stopChan:
 			return
 		case jobID := <-q.jobChan:
-			q.ProcessJob(jobID)
+			_ = q.ProcessJob(jobID)
 		}
 	}
 }
 
-// CreateJob creates a new batch job with items
+// CreateJob creates a new batch job with items.
 func (q *JobQueue) CreateJob(identityID *int, totalItems int) (int, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -82,7 +86,7 @@ func (q *JobQueue) CreateJob(identityID *int, totalItems int) (int, error) {
 	return job.ID, nil
 }
 
-// AddJobItem adds an item to a batch job
+// AddJobItem adds an item to a batch job.
 func (q *JobQueue) AddJobItem(batchJobID int, cvID *int, jobDescription string) (int, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -95,21 +99,23 @@ func (q *JobQueue) AddJobItem(batchJobID int, cvID *int, jobDescription string) 
 	return item.ID, nil
 }
 
-// ProcessJob processes a specific batch job with actual LLM calls
+// ProcessJob processes a specific batch job with actual LLM calls.
 func (q *JobQueue) ProcessJob(jobID int) error {
 	q.mu.Lock()
 
 	// Update job status to processing
 	if err := q.repo.UpdateBatchJobStatus(jobID, "processing", 0); err != nil {
 		q.mu.Unlock()
+
 		return err
 	}
 
 	// Check if provider is set
 	if q.provider == nil {
 		q.mu.Unlock()
-		q.repo.UpdateBatchJobStatus(jobID, "failed", 0)
-		return fmt.Errorf("LLM provider not set for batch processing")
+		_ = q.repo.UpdateBatchJobStatus(jobID, "failed", 0)
+
+		return errors.New("LLM provider not set for batch processing")
 	}
 
 	q.mu.Unlock()
@@ -117,24 +123,28 @@ func (q *JobQueue) ProcessJob(jobID int) error {
 	// Get job items
 	items, err := q.repo.GetBatchJobItems(jobID)
 	if err != nil {
-		q.repo.UpdateBatchJobStatus(jobID, "failed", 0)
+		_ = q.repo.UpdateBatchJobStatus(jobID, "failed", 0)
+
 		return err
 	}
 
 	// Process each item with actual LLM calls
 	completedCount := 0
 	ctx := context.Background()
-	
+
 	for _, item := range items {
 		// Get CV text for this item
 		var cvText string
+
 		if item.CVID != nil {
 			cv, err := q.repo.GetCV(*item.CVID)
 			if err != nil {
 				// Skip this item on error
-				q.repo.UpdateBatchJobItem(item.ID, "failed", nil, nil)
+				_ = q.repo.UpdateBatchJobItem(item.ID, "failed", nil, nil)
+
 				continue
 			}
+
 			cvText = cv.OriginalText
 		}
 
@@ -142,12 +152,13 @@ func (q *JobQueue) ProcessJob(jobID int) error {
 		result, err := q.provider.Customize(ctx, cvText, item.JobDescription, []string{})
 		if err != nil {
 			// Mark item as failed
-			q.repo.UpdateBatchJobItem(item.ID, "failed", nil, nil)
+			_ = q.repo.UpdateBatchJobItem(item.ID, "failed", nil, nil)
+
 			continue
 		}
 
 		// Store successful result
-		resultData := map[string]interface{}{
+		resultData := map[string]any{
 			"status":          "completed",
 			"match_score":     result.MatchScore,
 			"modifications":   result.Modifications,
@@ -158,9 +169,11 @@ func (q *JobQueue) ProcessJob(jobID int) error {
 		resultPtr := (*json.RawMessage)(&resultJSON)
 
 		if err := q.repo.UpdateBatchJobItem(item.ID, "completed", resultPtr, nil); err != nil {
-			q.repo.UpdateBatchJobStatus(jobID, "failed", completedCount)
+			_ = q.repo.UpdateBatchJobStatus(jobID, "failed", completedCount)
+
 			return err
 		}
+
 		completedCount++
 	}
 
@@ -168,8 +181,8 @@ func (q *JobQueue) ProcessJob(jobID int) error {
 	return q.repo.UpdateBatchJobStatus(jobID, "completed", completedCount)
 }
 
-// GetBatchJobStatus retrieves the status of a batch job
-func (q *JobQueue) GetBatchJobStatus(jobID int) (map[string]interface{}, error) {
+// GetBatchJobStatus retrieves the status of a batch job.
+func (q *JobQueue) GetBatchJobStatus(jobID int) (map[string]any, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -185,6 +198,7 @@ func (q *JobQueue) GetBatchJobStatus(jobID int) (map[string]interface{}, error) 
 
 	// Calculate progress
 	completedCount := 0
+
 	for _, item := range items {
 		if item.Status == "completed" {
 			completedCount++
@@ -196,7 +210,7 @@ func (q *JobQueue) GetBatchJobStatus(jobID int) (map[string]interface{}, error) 
 		progress = float64(completedCount) / float64(len(items))
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"job_id":     job.ID,
 		"status":     job.Status,
 		"created_at": job.CreatedAt,

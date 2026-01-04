@@ -1,8 +1,11 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package llm
 
 import "context"
 
-// Provider is the interface that all LLM providers must implement
+// Provider is the interface that all LLM providers must implement.
 type Provider interface {
 	// Customize takes a CV and job description and returns a customized CV with metadata
 	Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error)
@@ -10,14 +13,14 @@ type Provider interface {
 	GetName() string
 }
 
-// CustomizationResponse contains the result of CV customization
+// CustomizationResponse contains the result of CV customization.
 type CustomizationResponse struct {
 	ModifiedCV    string
 	MatchScore    float64
 	Modifications []string
 }
 
-// ProviderConfig holds configuration for a specific provider
+// ProviderConfig holds configuration for a specific provider.
 type ProviderConfig struct {
 	Name   string
 	APIKey string

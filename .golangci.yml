@@ -1,0 +1,92 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - errorlint
+    - exhaustruct
+    - funlen
+    - ireturn
+    - mnd
+    - nonamedreturns
+    - varnamelen
+    - wrapcheck
+    - wsl
+    - godox
+    - containedctx
+    - gosec
+    - noinlineerr
+    - gomoddirectives
+    - noctx
+    - paralleltest
+    - tagliatelle
+    - testpackage
+    - unparam
+    - wsl_v5
+    - lll
+    - goconst
+    - gocognit
+    - nestif
+    - funcorder
+    - forbidigo
+    - forcetypeassert
+    - err113
+    - errchkjson
+    - contextcheck
+    - modernize
+    - musttag
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - ifElseChain
+        - sprintfQuotedString
+        - exitAfterDefer
+        - appendCombine
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: var-naming
+          disabled: true
+    goheader:
+      template: |-
+        Copyright (c) Ultraviolet
+        SPDX-License-Identifier: Apache-2.0
+    tagliatelle:
+      case:
+        use-field-name: true
+        rules:
+          json: snake
+        extended-rules:
+          json:
+            case: snake
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 100
+  max-same-issues: 100
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

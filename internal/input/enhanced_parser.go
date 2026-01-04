@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package input
 
 import (
@@ -5,7 +8,7 @@ import (
 	"strings"
 )
 
-// StructuredCVContent represents parsed CV content with structure
+// StructuredCVContent represents parsed CV content with structure.
 type StructuredCVContent struct {
 	RawText        string
 	Name           string
@@ -19,7 +22,7 @@ type StructuredCVContent struct {
 	Certifications []string
 }
 
-// StructuredJobDescription represents parsed job description with structure
+// StructuredJobDescription represents parsed job description with structure.
 type StructuredJobDescription struct {
 	RawText          string
 	Title            string
@@ -32,15 +35,15 @@ type StructuredJobDescription struct {
 	BenefitsKeywords []string
 }
 
-// EnhancedParser provides structured parsing of CVs and job descriptions
+// EnhancedParser provides structured parsing of CVs and job descriptions.
 type EnhancedParser struct{}
 
-// NewEnhancedParser creates a new enhanced parser
+// NewEnhancedParser creates a new enhanced parser.
 func NewEnhancedParser() *EnhancedParser {
 	return &EnhancedParser{}
 }
 
-// ParseCV extracts structured information from CV text
+// ParseCV extracts structured information from CV text.
 func (ep *EnhancedParser) ParseCV(content string) *StructuredCVContent {
 	cv := &StructuredCVContent{
 		RawText:        content,
@@ -77,7 +80,7 @@ func (ep *EnhancedParser) ParseCV(content string) *StructuredCVContent {
 	return cv
 }
 
-// ParseJobDescription extracts structured information from job description text
+// ParseJobDescription extracts structured information from job description text.
 func (ep *EnhancedParser) ParseJobDescription(content string) *StructuredJobDescription {
 	job := &StructuredJobDescription{
 		RawText:          content,
@@ -106,27 +109,31 @@ func (ep *EnhancedParser) ParseJobDescription(content string) *StructuredJobDesc
 	return job
 }
 
-// extractEmail extracts email address from text
+// extractEmail extracts email address from text.
 func extractEmail(content string) string {
 	emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+
 	matches := emailRegex.FindAllString(content, -1)
 	if len(matches) > 0 {
 		return matches[0]
 	}
+
 	return ""
 }
 
-// extractPhone extracts phone number from text
+// extractPhone extracts phone number from text.
 func extractPhone(content string) string {
 	phoneRegex := regexp.MustCompile(`(?:\+\d{1,3}[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}`)
+
 	matches := phoneRegex.FindAllString(content, -1)
 	if len(matches) > 0 {
 		return matches[0]
 	}
+
 	return ""
 }
 
-// extractExperienceSection extracts work experience from CV
+// extractExperienceSection extracts work experience from CV.
 func (ep *EnhancedParser) extractExperienceSection(content string) []Experience {
 	var experiences []Experience
 
@@ -160,7 +167,7 @@ func (ep *EnhancedParser) extractExperienceSection(content string) []Experience 
 	return experiences
 }
 
-// extractEducationSection extracts education from CV
+// extractEducationSection extracts education from CV.
 func (ep *EnhancedParser) extractEducationSection(content string) []Education {
 	var educations []Education
 
@@ -192,7 +199,7 @@ func (ep *EnhancedParser) extractEducationSection(content string) []Education {
 	return educations
 }
 
-// extractSkillsSection extracts skills from CV
+// extractSkillsSection extracts skills from CV.
 func (ep *EnhancedParser) extractSkillsSection(content string) []string {
 	var skills []string
 
@@ -226,7 +233,7 @@ func (ep *EnhancedParser) extractSkillsSection(content string) []string {
 	return skills
 }
 
-// extractCertificationsSection extracts certifications from CV
+// extractCertificationsSection extracts certifications from CV.
 func (ep *EnhancedParser) extractCertificationsSection(content string) []string {
 	var certs []string
 
@@ -253,19 +260,20 @@ func (ep *EnhancedParser) extractCertificationsSection(content string) []string 
 	return certs
 }
 
-// extractJobTitle extracts job title from job description
+// extractJobTitle extracts job title from job description.
 func (ep *EnhancedParser) extractJobTitle(content string) string {
 	lines := strings.Split(content, "\n")
-	for _, line := range lines[:min(10, len(lines))] {
+	for _, line := range lines[:minInt(10, len(lines))] {
 		line = strings.TrimSpace(line)
 		if isLikelyJobTitle(line) && len(line) < 100 {
 			return line
 		}
 	}
+
 	return ""
 }
 
-// extractCompanyName extracts company name from job description
+// extractCompanyName extracts company name from job description.
 func (ep *EnhancedParser) extractCompanyName(content string) string {
 	patterns := []string{
 		`(?i)company[\s:]*([^\n]+)`,
@@ -275,6 +283,7 @@ func (ep *EnhancedParser) extractCompanyName(content string) string {
 
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
+
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			company := strings.TrimSpace(matches[1])
@@ -287,7 +296,7 @@ func (ep *EnhancedParser) extractCompanyName(content string) string {
 	return ""
 }
 
-// extractLocation extracts location from job description
+// extractLocation extracts location from job description.
 func (ep *EnhancedParser) extractLocation(content string) string {
 	patterns := []string{
 		`(?i)location[\s:]*([^\n]+)`,
@@ -297,6 +306,7 @@ func (ep *EnhancedParser) extractLocation(content string) string {
 
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
+
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			location := strings.TrimSpace(matches[1])
@@ -309,13 +319,14 @@ func (ep *EnhancedParser) extractLocation(content string) string {
 	return ""
 }
 
-// extractDescription extracts job description overview
+// extractDescription extracts job description overview.
 func (ep *EnhancedParser) extractDescription(content string) string {
 	// Get first few paragraphs before Requirements section
 	descStart := 0
+
 	descEnd := findSectionStart(content, []string{"requirements", "responsibilities", "qualifications"})
 	if descEnd == -1 {
-		descEnd = min(len(content), 500)
+		descEnd = minInt(len(content), 500)
 	}
 
 	desc := strings.TrimSpace(content[descStart:descEnd])
@@ -328,27 +339,27 @@ func (ep *EnhancedParser) extractDescription(content string) string {
 	return strings.Join(lines, "\n")
 }
 
-// extractRequirements extracts job requirements
+// extractRequirements extracts job requirements.
 func (ep *EnhancedParser) extractRequirements(content string) []string {
 	return ep.extractListSection(content, []string{"requirements", "must have", "required"})
 }
 
-// extractResponsibilities extracts job responsibilities
+// extractResponsibilities extracts job responsibilities.
 func (ep *EnhancedParser) extractResponsibilities(content string) []string {
 	return ep.extractListSection(content, []string{"responsibilities", "your role", "what you'll do"})
 }
 
-// extractPreferredSkills extracts preferred/nice-to-have skills
+// extractPreferredSkills extracts preferred/nice-to-have skills.
 func (ep *EnhancedParser) extractPreferredSkills(content string) []string {
 	return ep.extractListSection(content, []string{"preferred", "nice to have", "bonus"})
 }
 
-// extractBenefitsKeywords extracts benefits mentioned
+// extractBenefitsKeywords extracts benefits mentioned.
 func (ep *EnhancedParser) extractBenefitsKeywords(content string) []string {
 	return ep.extractListSection(content, []string{"benefits", "perks", "compensation"})
 }
 
-// extractListSection extracts items from a bulleted/numbered list section
+// extractListSection extracts items from a bulleted/numbered list section.
 func (ep *EnhancedParser) extractListSection(content string, sectionNames []string) []string {
 	var items []string
 
@@ -386,6 +397,7 @@ func findSectionStart(content string, sectionNames []string) int {
 			return idx + len(name)
 		}
 	}
+
 	return -1
 }
 
@@ -397,12 +409,15 @@ func findSectionEnd(content string, start int, nextSectionNames []string) int {
 			return start + idx
 		}
 	}
+
 	return -1
 }
 
 func parseBulletedList(content string) []string {
 	var items []string
+
 	lines := strings.Split(content, "\n")
+
 	var currentItem string
 
 	for _, line := range lines {
@@ -440,6 +455,7 @@ func extractJobTitleFromEntry(entry string) string {
 	if len(lines) > 0 {
 		return strings.TrimSpace(lines[0])
 	}
+
 	return ""
 }
 
@@ -448,21 +464,26 @@ func extractCompanyFromEntry(entry string) string {
 	if len(lines) > 1 {
 		return strings.TrimSpace(lines[1])
 	}
+
 	return ""
 }
 
 func extractDurationFromEntry(entry string) string {
 	re := regexp.MustCompile(`(20[0-9]{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|present)`)
+
 	matches := re.FindStringSubmatch(strings.ToLower(entry))
 	if len(matches) > 0 {
 		// Find the full duration string
 		lower := strings.ToLower(entry)
+
 		idx := strings.Index(lower, strings.ToLower(matches[0]))
 		if idx != -1 {
-			end := min(idx+30, len(entry))
+			end := minInt(idx+30, len(entry))
+
 			return strings.TrimSpace(entry[idx:end])
 		}
 	}
+
 	return ""
 }
 
@@ -471,6 +492,7 @@ func extractDescriptionFromEntry(entry string) string {
 	if len(lines) > 2 {
 		return strings.Join(lines[2:], " ")
 	}
+
 	return ""
 }
 
@@ -479,6 +501,7 @@ func extractSchoolFromEntry(entry string) string {
 	if len(lines) > 0 {
 		return strings.TrimSpace(lines[0])
 	}
+
 	return ""
 }
 
@@ -497,6 +520,7 @@ func extractDegreeFromEntry(entry string) string {
 			}
 		}
 	}
+
 	return ""
 }
 
@@ -507,12 +531,14 @@ func extractFieldFromEntry(entry string) string {
 			return strings.TrimSpace(line)
 		}
 	}
+
 	return ""
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }

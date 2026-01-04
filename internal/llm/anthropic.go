@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package llm
 
 import (
@@ -9,13 +12,13 @@ import (
 	"strings"
 )
 
-// AnthropicProvider implements the Provider interface using Anthropic's API
+// AnthropicProvider implements the Provider interface using Anthropic's API.
 type AnthropicProvider struct {
 	apiKey string
 	model  string
 }
 
-// NewAnthropicProvider creates a new Anthropic provider
+// NewAnthropicProvider creates a new Anthropic provider.
 func NewAnthropicProvider(apiKey, model string) Provider {
 	return &AnthropicProvider{
 		apiKey: apiKey,
@@ -23,12 +26,12 @@ func NewAnthropicProvider(apiKey, model string) Provider {
 	}
 }
 
-// Customize customizes a CV using Anthropic via REST API
+// Customize customizes a CV using Anthropic via REST API.
 func (p *AnthropicProvider) Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error) {
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
 	// Create request body
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"model":      p.model,
 		"max_tokens": 2000,
 		"system":     systemPrompt,
@@ -45,16 +48,17 @@ func (p *AnthropicProvider) Customize(ctx context.Context, cv, jobDescription st
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", strings.NewReader(string(body)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.anthropic.com/v1/messages", strings.NewReader(string(body)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("content-type", "application/json")
+	req.Header.Set("X-Api-Key", p.apiKey)
+	req.Header.Set("Anthropic-Version", "2023-06-01")
+	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call Anthropic API: %w", err)
@@ -67,19 +71,21 @@ func (p *AnthropicProvider) Customize(ctx context.Context, cv, jobDescription st
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Anthropic API error: %s", string(respBody))
+		return nil, fmt.Errorf("anthropic API error: %s", string(respBody))
 	}
 
 	// Parse response
-	var respData map[string]interface{}
+	var respData map[string]any
+
 	err = json.Unmarshal(respBody, &respData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	content := ""
-	if content_data, ok := respData["content"].([]interface{}); ok && len(content_data) > 0 {
-		if textBlock, ok := content_data[0].(map[string]interface{}); ok {
+
+	if contentData, ok := respData["content"].([]any); ok && len(contentData) > 0 {
+		if textBlock, ok := contentData[0].(map[string]any); ok {
 			if text, ok := textBlock["text"].(string); ok {
 				content = text
 			}
@@ -95,7 +101,7 @@ func (p *AnthropicProvider) Customize(ctx context.Context, cv, jobDescription st
 	}, nil
 }
 
-// GetName returns the provider name
+// GetName returns the provider name.
 func (p *AnthropicProvider) GetName() string {
 	return "anthropic"
 }

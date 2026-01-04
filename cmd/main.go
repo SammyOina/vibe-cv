@@ -1,8 +1,12 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,8 +29,10 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	var repo *db.Repository
-	var authConfig *auth.Config
+	var (
+		repo       *db.Repository
+		authConfig *auth.Config
+	)
 
 	if cfg.DatabaseURL != "" {
 		dbConn, err := db.InitDB(cfg.DatabaseURL)
@@ -34,7 +40,9 @@ func main() {
 			log.Fatalf("Failed to initialize database: %v", err)
 		}
 		defer db.Close(dbConn)
+
 		repo = db.NewRepository(dbConn)
+
 		log.Println("Database initialized successfully")
 	}
 
@@ -61,6 +69,7 @@ func main() {
 	metrics := observability.NewMetrics()
 	healthCheck := observability.NewHealthCheck(metrics)
 	healthCheck.UpdateCheck("api", "healthy", "API is operational", nil)
+
 	if repo != nil {
 		healthCheck.UpdateCheck("database", "healthy", "Database connection established", nil)
 	} else {
@@ -71,13 +80,16 @@ func main() {
 	if outputDir == "" {
 		outputDir = "./outputs"
 	}
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		log.Fatalf("Failed to create output directory %s: %v", outputDir, err)
 	}
-	testFile := fmt.Sprintf("%s/.write-test", outputDir)
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+
+	testFile := outputDir + "/.write-test"
+	if err := os.WriteFile(testFile, []byte("test"), 0o644); err != nil {
 		log.Fatalf("Output directory %s is not writable: %v", outputDir, err)
 	}
+
 	os.Remove(testFile)
 	log.Printf("Output directory validated: %s", outputDir)
 
@@ -109,15 +121,18 @@ func main() {
 	mux.HandleFunc("GET /metrics", observability.PrometheusMetricsHandler(metrics)) // Prometheus scrape endpoint
 	mux.HandleFunc("GET /api/audit-logs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		count := 100
 		if countParam := r.URL.Query().Get("count"); countParam != "" {
 			if _, err := fmt.Sscanf(countParam, "%d", &count); err != nil {
 				count = 100
 			}
 		}
+
 		logs := auditLogger.GetRecentLogs(count)
+
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(logs)
+		_ = json.NewEncoder(w).Encode(logs)
 	})
 
 	addr := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)
@@ -145,7 +160,7 @@ func main() {
 			log.Println("Set DATABASE_URL environment variable to enable full Phase 4 features")
 		}
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()

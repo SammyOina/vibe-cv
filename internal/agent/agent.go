@@ -1,21 +1,25 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/sammyoina/vibe-cv/internal/llm"
 )
 
-// BaseAgent provides common functionality
+// BaseAgent provides common functionality.
 type BaseAgent struct {
 	config      *AgentConfig
 	tools       []*Tool
 	llmProvider llm.Provider
 }
 
-// NewBaseAgent creates a new base agent
+// NewBaseAgent creates a new base agent.
 func NewBaseAgent(config *AgentConfig, provider llm.Provider) *BaseAgent {
 	return &BaseAgent{
 		config:      config,
@@ -24,8 +28,8 @@ func NewBaseAgent(config *AgentConfig, provider llm.Provider) *BaseAgent {
 	}
 }
 
-// Execute runs the agent
-func (ba *BaseAgent) Execute(ctx context.Context, state *AgentState) (*AgentState, error) {
+// Execute runs the agent.
+func (ba *BaseAgent) Execute(_ context.Context, state *AgentState) (*AgentState, error) {
 	newState := &AgentState{
 		CV:                  state.CV,
 		JobDescription:      state.JobDescription,
@@ -47,40 +51,42 @@ func (ba *BaseAgent) Execute(ctx context.Context, state *AgentState) (*AgentStat
 		ToolCalls:           state.ToolCalls,
 		LastUpdate:          time.Now(),
 	}
+
 	return newState, nil
 }
 
-// GetType returns agent type
+// GetType returns agent type.
 func (ba *BaseAgent) GetType() AgentType {
 	return ba.config.Type
 }
 
-// RegisterTool registers a tool
+// RegisterTool registers a tool.
 func (ba *BaseAgent) RegisterTool(tool *Tool) {
 	ba.tools = append(ba.tools, tool)
 }
 
-// GetTools returns all tools
+// GetTools returns all tools.
 func (ba *BaseAgent) GetTools() []*Tool {
 	return ba.tools
 }
 
-// JobAnalyzerAgent analyzes job descriptions
+// JobAnalyzerAgent analyzes job descriptions.
 type JobAnalyzerAgent struct {
 	*BaseAgent
 }
 
-// NewJobAnalyzerAgent creates a new job analyzer
+// NewJobAnalyzerAgent creates a new job analyzer.
 func NewJobAnalyzerAgent(config *AgentConfig, provider llm.Provider) *JobAnalyzerAgent {
 	config.Type = AgentTypeAnalyzer
+
 	return &JobAnalyzerAgent{BaseAgent: NewBaseAgent(config, provider)}
 }
 
-// Execute analyzes job description
+// Execute analyzes job description.
 func (jaa *JobAnalyzerAgent) Execute(ctx context.Context, state *AgentState) (*AgentState, error) {
 	newState, _ := jaa.BaseAgent.Execute(ctx, state)
 
-	prompt := fmt.Sprintf("Analyze this job description and extract: required skills, preferred skills, and complexity (1-10).\n\nJob: %s", state.JobDescription)
+	prompt := "Analyze this job description and extract: required skills, preferred skills, and complexity (1-10).\n\nJob: " + state.JobDescription
 
 	resp, err := jaa.llmProvider.Customize(context.Background(), state.CV, prompt, state.AdditionalContext)
 	if err == nil {
@@ -94,18 +100,19 @@ func (jaa *JobAnalyzerAgent) Execute(ctx context.Context, state *AgentState) (*A
 	return newState, nil
 }
 
-// CVOptimizerAgent optimizes CV
+// CVOptimizerAgent optimizes CV.
 type CVOptimizerAgent struct {
 	*BaseAgent
 }
 
-// NewCVOptimizerAgent creates a new CV optimizer
+// NewCVOptimizerAgent creates a new CV optimizer.
 func NewCVOptimizerAgent(config *AgentConfig, provider llm.Provider) *CVOptimizerAgent {
 	config.Type = AgentTypeOptimizer
+
 	return &CVOptimizerAgent{BaseAgent: NewBaseAgent(config, provider)}
 }
 
-// Execute optimizes CV
+// Execute optimizes CV.
 func (coa *CVOptimizerAgent) Execute(ctx context.Context, state *AgentState) (*AgentState, error) {
 	newState, _ := coa.BaseAgent.Execute(ctx, state)
 
@@ -121,18 +128,19 @@ func (coa *CVOptimizerAgent) Execute(ctx context.Context, state *AgentState) (*A
 	return newState, nil
 }
 
-// ValidationAgent validates CV
+// ValidationAgent validates CV.
 type ValidationAgent struct {
 	*BaseAgent
 }
 
-// NewValidationAgent creates a new validator
+// NewValidationAgent creates a new validator.
 func NewValidationAgent(config *AgentConfig, provider llm.Provider) *ValidationAgent {
 	config.Type = AgentTypeValidator
+
 	return &ValidationAgent{BaseAgent: NewBaseAgent(config, provider)}
 }
 
-// Execute validates CV
+// Execute validates CV.
 func (va *ValidationAgent) Execute(ctx context.Context, state *AgentState) (*AgentState, error) {
 	newState, _ := va.BaseAgent.Execute(ctx, state)
 
@@ -146,7 +154,7 @@ func (va *ValidationAgent) Execute(ctx context.Context, state *AgentState) (*Age
 	return newState, nil
 }
 
-// Orchestrator manages agents
+// Orchestrator manages agents.
 type Orchestrator struct {
 	agents  []Agent
 	metrics WorkflowMetrics
@@ -154,7 +162,7 @@ type Orchestrator struct {
 	config  *OrchestratorConfig
 }
 
-// NewOrchestrator creates orchestrator
+// NewOrchestrator creates orchestrator.
 func NewOrchestrator(config *OrchestratorConfig, factory *llm.Factory) *Orchestrator {
 	return &Orchestrator{
 		agents: make([]Agent, 0),
@@ -167,7 +175,7 @@ func NewOrchestrator(config *OrchestratorConfig, factory *llm.Factory) *Orchestr
 	}
 }
 
-// Execute runs workflow
+// Execute runs workflow.
 func (o *Orchestrator) Execute(ctx context.Context, cv, jobDescription string, additionalContext []string) (*WorkflowResult, error) {
 	startTime := time.Now()
 
@@ -194,10 +202,10 @@ func (o *Orchestrator) Execute(ctx context.Context, cv, jobDescription string, a
 	return result, nil
 }
 
-// ExecuteWithState runs from state
+// ExecuteWithState runs from state.
 func (o *Orchestrator) ExecuteWithState(ctx context.Context, state *AgentState) (*WorkflowResult, error) {
 	if len(o.agents) == 0 {
-		return nil, fmt.Errorf("no agents registered")
+		return nil, errors.New("no agents registered")
 	}
 
 	result := &WorkflowResult{
@@ -221,6 +229,7 @@ func (o *Orchestrator) ExecuteWithState(ctx context.Context, state *AgentState) 
 		newState, err := agent.Execute(ctx, state)
 		if err != nil {
 			result.ValidationErrors = append(result.ValidationErrors, err.Error())
+
 			continue
 		}
 
@@ -243,17 +252,17 @@ func (o *Orchestrator) ExecuteWithState(ctx context.Context, state *AgentState) 
 	return result, nil
 }
 
-// RegisterAgent adds agent
+// RegisterAgent adds agent.
 func (o *Orchestrator) RegisterAgent(agent Agent) {
 	o.agents = append(o.agents, agent)
 }
 
-// GetMetrics returns metrics
+// GetMetrics returns metrics.
 func (o *Orchestrator) GetMetrics() WorkflowMetrics {
 	return o.metrics
 }
 
-// BuildDefaultWorkflow builds agents
+// BuildDefaultWorkflow builds agents.
 func (o *Orchestrator) BuildDefaultWorkflow() error {
 	provider, err := o.factory.CreateProvider(context.Background(), o.config.Provider, o.config.APIKey, o.config.Model)
 	if err != nil {

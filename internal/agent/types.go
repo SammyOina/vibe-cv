@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package agent
 
 import (
@@ -5,7 +8,7 @@ import (
 	"time"
 )
 
-// AgentType defines the type of agent
+// AgentType defines the type of agent.
 type AgentType string
 
 const (
@@ -15,7 +18,7 @@ const (
 	AgentTypeOrchestrator AgentType = "orchestrator"
 )
 
-// AgentState represents the internal state of an agent
+// AgentState represents the internal state of an agent.
 type AgentState struct {
 	CV                  string
 	JobDescription      string
@@ -38,14 +41,14 @@ type AgentState struct {
 	LastUpdate          time.Time
 }
 
-// Message represents a message in conversation history
+// Message represents a message in conversation history.
 type Message struct {
 	Role      string
 	Content   string
 	Timestamp time.Time
 }
 
-// Decision tracks an agent's decision
+// Decision tracks an agent's decision.
 type Decision struct {
 	Timestamp time.Time
 	AgentType AgentType
@@ -53,23 +56,23 @@ type Decision struct {
 	Reasoning string
 }
 
-// ToolCall represents a tool invocation
+// ToolCall represents a tool invocation.
 type ToolCall struct {
 	ToolName  string
-	Input     map[string]interface{}
-	Output    interface{}
+	Input     map[string]any
+	Output    any
 	Duration  time.Duration
 	Timestamp time.Time
 }
 
-// Tool defines a function an agent can call
+// Tool defines a function an agent can call.
 type Tool struct {
 	Name        string
 	Description string
-	Execute     func(ctx context.Context, input map[string]interface{}) (interface{}, error)
+	Execute     func(ctx context.Context, input map[string]any) (any, error)
 }
 
-// Agent represents an agentic component
+// Agent represents an agentic component.
 type Agent interface {
 	Execute(ctx context.Context, state *AgentState) (*AgentState, error)
 	GetType() AgentType
@@ -77,7 +80,7 @@ type Agent interface {
 	GetTools() []*Tool
 }
 
-// WorkflowResult contains the final output
+// WorkflowResult contains the final output.
 type WorkflowResult struct {
 	Status              string
 	CustomizedCV        string
@@ -94,7 +97,7 @@ type WorkflowResult struct {
 	IsValid             bool
 }
 
-// WorkflowMetrics tracks performance
+// WorkflowMetrics tracks performance.
 type WorkflowMetrics struct {
 	TotalExecutionTime  time.Duration
 	AgentExecutionTimes map[AgentType]time.Duration
@@ -102,7 +105,7 @@ type WorkflowMetrics struct {
 	TotalIterations     int
 }
 
-// OrchestratorConfig holds configuration
+// OrchestratorConfig holds configuration.
 type OrchestratorConfig struct {
 	MaxIterations         int
 	EnableMemory          bool
@@ -115,7 +118,7 @@ type OrchestratorConfig struct {
 	APIKey                string
 }
 
-// DefaultOrchestratorConfig returns defaults
+// DefaultOrchestratorConfig returns defaults.
 func DefaultOrchestratorConfig() *OrchestratorConfig {
 	return &OrchestratorConfig{
 		MaxIterations:         5,
@@ -129,7 +132,7 @@ func DefaultOrchestratorConfig() *OrchestratorConfig {
 	}
 }
 
-// AgentConfig holds agent configuration
+// AgentConfig holds agent configuration.
 type AgentConfig struct {
 	Type          AgentType
 	Name          string

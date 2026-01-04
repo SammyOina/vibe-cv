@@ -1,19 +1,23 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package llm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"google.golang.org/genai"
 )
 
-// GeminiProvider implements the Provider interface using Google's Gemini API
+// GeminiProvider implements the Provider interface using Google's Gemini API.
 type GeminiProvider struct {
 	client *genai.Client
 	model  string
 }
 
-// NewGeminiProvider creates a new Gemini provider
+// NewGeminiProvider creates a new Gemini provider.
 func NewGeminiProvider(ctx context.Context, apiKey, model string) (*GeminiProvider, error) {
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey: apiKey,
@@ -28,7 +32,7 @@ func NewGeminiProvider(ctx context.Context, apiKey, model string) (*GeminiProvid
 	}, nil
 }
 
-// Customize customizes a CV using Google Gemini
+// Customize customizes a CV using Google Gemini.
 func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error) {
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
@@ -66,11 +70,12 @@ func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription strin
 	}
 
 	if resp == nil || len(resp.Candidates) == 0 {
-		return nil, fmt.Errorf("no response from Gemini")
+		return nil, errors.New("no response from Gemini")
 	}
 
 	// Extract content from response
 	content := ""
+
 	if candidate := resp.Candidates[0]; candidate != nil && len(candidate.Content.Parts) > 0 {
 		if part := candidate.Content.Parts[0]; part != nil {
 			content = part.Text
@@ -86,7 +91,7 @@ func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription strin
 	}, nil
 }
 
-// GetName returns the provider name
+// GetName returns the provider name.
 func (p *GeminiProvider) GetName() string {
 	return "gemini"
 }

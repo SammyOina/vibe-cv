@@ -1,36 +1,39 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package analytics
 
 import (
-"sync"
-"time"
+	"sync"
+	"time"
 
-"github.com/sammyoina/vibe-cv/internal/db"
+	"github.com/sammyoina/vibe-cv/internal/db"
 )
 
-// Collector collects analytics metrics
+// Collector collects analytics metrics.
 type Collector struct {
 	mu   sync.RWMutex
 	repo *db.Repository
 }
 
-// NewCollector creates a new analytics collector
+// NewCollector creates a new analytics collector.
 func NewCollector(repo *db.Repository) *Collector {
 	return &Collector{
 		repo: repo,
 	}
 }
 
-// AnalyticsData represents analytics information
+// AnalyticsData represents analytics information.
 type AnalyticsData struct {
-	AverageMatchScore      float64                    `json:"average_match_score"`
-	AverageKeywordCoverage float64                    `json:"average_keyword_coverage"`
-	TotalCustomizations    int                        `json:"total_customizations"`
-	TimeRange              string                     `json:"time_range"`
-	MatchScoreDistribution map[string]int             `json:"match_score_distribution"`
-	RecentSnapshots        []*db.AnalyticsSnapshot    `json:"recent_snapshots"`
+	AverageMatchScore      float64                 `json:"average_match_score"`
+	AverageKeywordCoverage float64                 `json:"average_keyword_coverage"`
+	TotalCustomizations    int                     `json:"total_customizations"`
+	TimeRange              string                  `json:"time_range"`
+	MatchScoreDistribution map[string]int          `json:"match_score_distribution"`
+	RecentSnapshots        []*db.AnalyticsSnapshot `json:"recent_snapshots"`
 }
 
-// GetAnalytics retrieves analytics data for an identity
+// GetAnalytics retrieves analytics data for an identity.
 func (c *Collector) GetAnalytics(identityID *int, limit int) (*AnalyticsData, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -64,6 +67,7 @@ func (c *Collector) GetAnalytics(identityID *int, limit int) (*AnalyticsData, er
 			bucket := distributeBucket(*snapshot.MatchScore)
 			analytics.MatchScoreDistribution[bucket]++
 		}
+
 		if snapshot.KeywordCoverage != nil {
 			totalCoverage += *snapshot.KeywordCoverage
 			coverageCount++
@@ -73,15 +77,17 @@ func (c *Collector) GetAnalytics(identityID *int, limit int) (*AnalyticsData, er
 	if scoreCount > 0 {
 		analytics.AverageMatchScore = totalScore / float64(scoreCount)
 	}
+
 	if coverageCount > 0 {
 		analytics.AverageKeywordCoverage = totalCoverage / float64(coverageCount)
 	}
+
 	analytics.TotalCustomizations = len(snapshots)
 
 	return analytics, nil
 }
 
-// distributeBucket places a match score into a bucket
+// distributeBucket places a match score into a bucket.
 func distributeBucket(score float64) string {
 	if score >= 0.9 {
 		return "0.9-1.0"
@@ -92,10 +98,11 @@ func distributeBucket(score float64) string {
 	} else if score >= 0.6 {
 		return "0.6-0.7"
 	}
+
 	return "0.0-0.6"
 }
 
-// AnalyticsDashboard represents dashboard statistics
+// AnalyticsDashboard represents dashboard statistics.
 type AnalyticsDashboard struct {
 	TotalUsers          int                     `json:"total_users"`
 	TotalCustomizations int                     `json:"total_customizations"`
@@ -105,21 +112,21 @@ type AnalyticsDashboard struct {
 	RecentActivities    []*db.AnalyticsSnapshot `json:"recent_activities"`
 }
 
-// DailyMetric represents a daily metric
+// DailyMetric represents a daily metric.
 type DailyMetric struct {
 	Date       time.Time `json:"date"`
 	MatchScore float64   `json:"match_score"`
 	Count      int       `json:"count"`
 }
 
-// KeywordMetric represents keyword frequency
+// KeywordMetric represents keyword frequency.
 type KeywordMetric struct {
 	Keyword      string  `json:"keyword"`
 	Count        int     `json:"count"`
 	AverageScore float64 `json:"average_score"`
 }
 
-// GetDashboard retrieves dashboard statistics
+// GetDashboard retrieves dashboard statistics.
 func (c *Collector) GetDashboard() (*AnalyticsDashboard, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

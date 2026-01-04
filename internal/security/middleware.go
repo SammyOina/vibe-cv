@@ -1,9 +1,14 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package security
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -11,33 +16,34 @@ import (
 	"github.com/sammyoina/vibe-cv/internal/auth"
 )
 
-// RequestValidator validates HTTP request structure and content
+// RequestValidator validates HTTP request structure and content.
 type RequestValidator struct {
 	maxBodySize int64
 }
 
-// NewRequestValidator creates a new request validator
+// NewRequestValidator creates a new request validator.
 func NewRequestValidator(maxBodySize int64) *RequestValidator {
 	return &RequestValidator{
 		maxBodySize: maxBodySize,
 	}
 }
 
-// ValidateContentType validates the Content-Type header
+// ValidateContentType validates the Content-Type header.
 func (rv *RequestValidator) ValidateContentType(contentType string, expected string) error {
 	if contentType == "" && expected != "" {
-		return fmt.Errorf("missing Content-Type header")
+		return errors.New("missing Content-Type header")
 	}
 	// Parse and compare base content type (ignore charset etc)
 	actual := strings.Split(contentType, ";")[0]
 	if actual != expected && expected != "" {
 		return fmt.Errorf("invalid Content-Type: expected %s, got %s", expected, actual)
 	}
+
 	return nil
 }
 
-// ValidateJSONBody validates and unmarshals JSON request body
-func (rv *RequestValidator) ValidateJSONBody(r *http.Request, v interface{}) error {
+// ValidateJSONBody validates and unmarshals JSON request body.
+func (rv *RequestValidator) ValidateJSONBody(r *http.Request, v any) error {
 	// Check body size
 	if r.ContentLength > rv.maxBodySize {
 		return fmt.Errorf("request body too large: %d bytes (max %d)", r.ContentLength, rv.maxBodySize)
@@ -51,6 +57,7 @@ func (rv *RequestValidator) ValidateJSONBody(r *http.Request, v interface{}) err
 	// Decode JSON
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevent accepting unknown fields
+
 	if err := decoder.Decode(v); err != nil {
 		return fmt.Errorf("invalid JSON: %w", err)
 	}
@@ -58,24 +65,24 @@ func (rv *RequestValidator) ValidateJSONBody(r *http.Request, v interface{}) err
 	return nil
 }
 
-// RateLimiter implements token bucket rate limiting
+// RateLimiter implements token bucket rate limiting.
 type RateLimiter struct {
-	mu       sync.RWMutex
-	buckets  map[string]*TokenBucket
-	rps      float64 // requests per second
-	burst    int     // burst capacity
-	cleanup  time.Duration
-	lastGC   time.Time
+	mu      sync.RWMutex
+	buckets map[string]*TokenBucket
+	rps     float64 // requests per second
+	burst   int     // burst capacity
+	cleanup time.Duration
+	lastGC  time.Time
 }
 
-// TokenBucket represents a rate limiting bucket for a client
+// TokenBucket represents a rate limiting bucket for a client.
 type TokenBucket struct {
-	tokens    float64
+	tokens     float64
 	lastRefill time.Time
-	ip        string
+	ip         string
 }
 
-// NewRateLimiter creates a new rate limiter
+// NewRateLimiter creates a new rate limiter.
 func NewRateLimiter(requestsPerSecond float64, burst int) *RateLimiter {
 	return &RateLimiter{
 		buckets: make(map[string]*TokenBucket),
@@ -86,7 +93,7 @@ func NewRateLimiter(requestsPerSecond float64, burst int) *RateLimiter {
 	}
 }
 
-// Allow checks if a request from the given IP is allowed
+// Allow checks if a request from the given IP is allowed.
 func (rl *RateLimiter) Allow(ip string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -110,19 +117,20 @@ func (rl *RateLimiter) Allow(ip string) bool {
 	// Refill tokens
 	now := time.Now()
 	elapsed := now.Sub(bucket.lastRefill).Seconds()
-	bucket.tokens = min(float64(rl.burst), bucket.tokens+elapsed*rl.rps)
+	bucket.tokens = minFloat(float64(rl.burst), bucket.tokens+elapsed*rl.rps)
 	bucket.lastRefill = now
 
 	// Check if token available
 	if bucket.tokens >= 1.0 {
 		bucket.tokens--
+
 		return true
 	}
 
 	return false
 }
 
-// cleanupOldBuckets removes buckets that haven't been used recently
+// cleanupOldBuckets removes buckets that haven't been used recently.
 func (rl *RateLimiter) cleanupOldBuckets() {
 	cutoff := time.Now().Add(-rl.cleanup)
 	for ip, bucket := range rl.buckets {
@@ -132,14 +140,15 @@ func (rl *RateLimiter) cleanupOldBuckets() {
 	}
 }
 
-func min(a, b float64) float64 {
+func minFloat(a, b float64) float64 {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 
-// CORSConfig holds CORS configuration
+// CORSConfig holds CORS configuration.
 type CORSConfig struct {
 	AllowedOrigins   []string
 	AllowedMethods   []string
@@ -148,7 +157,7 @@ type CORSConfig struct {
 	MaxAge           int
 }
 
-// DefaultCORSConfig returns sensible CORS defaults
+// DefaultCORSConfig returns sensible CORS defaults.
 func DefaultCORSConfig() *CORSConfig {
 	return &CORSConfig{
 		AllowedOrigins:   []string{"*"},
@@ -159,23 +168,24 @@ func DefaultCORSConfig() *CORSConfig {
 	}
 }
 
-// IsOriginAllowed checks if an origin is allowed
+// IsOriginAllowed checks if an origin is allowed.
 func (cc *CORSConfig) IsOriginAllowed(origin string) bool {
 	for _, allowed := range cc.AllowedOrigins {
 		if allowed == "*" || allowed == origin {
 			return true
 		}
 	}
+
 	return false
 }
 
-// AuditLogger logs API calls for security and compliance
+// AuditLogger logs API calls for security and compliance.
 type AuditLogger struct {
 	mu   sync.Mutex
 	logs []AuditLogEntry
 }
 
-// AuditLogEntry represents a single audit log entry
+// AuditLogEntry represents a single audit log entry.
 type AuditLogEntry struct {
 	Timestamp  time.Time
 	Method     string
@@ -186,15 +196,15 @@ type AuditLogEntry struct {
 	Error      string
 }
 
-// NewAuditLogger creates a new audit logger
+// NewAuditLogger creates a new audit logger.
 func NewAuditLogger() *AuditLogger {
 	return &AuditLogger{
 		logs: make([]AuditLogEntry, 0, 10000),
 	}
 }
 
-// LogRequest logs an API request
-func (al *AuditLogger) LogRequest(method string, path string, statusCode int, ip string, ctx interface{}, err error) {
+// LogRequest logs an API request.
+func (al *AuditLogger) LogRequest(method string, path string, statusCode int, ip string, ctx any, err error) {
 	al.mu.Lock()
 	defer al.mu.Unlock()
 
@@ -220,10 +230,11 @@ func (al *AuditLogger) LogRequest(method string, path string, statusCode int, ip
 	if len(al.logs) >= 10000 {
 		al.logs = al.logs[1:]
 	}
+
 	al.logs = append(al.logs, entry)
 }
 
-// GetRecentLogs returns recent audit logs
+// GetRecentLogs returns recent audit logs.
 func (al *AuditLogger) GetRecentLogs(count int) []AuditLogEntry {
 	al.mu.Lock()
 	defer al.mu.Unlock()
@@ -231,6 +242,7 @@ func (al *AuditLogger) GetRecentLogs(count int) []AuditLogEntry {
 	if count > len(al.logs) {
 		count = len(al.logs)
 	}
+
 	if count == 0 {
 		return []AuditLogEntry{}
 	}
@@ -241,25 +253,27 @@ func (al *AuditLogger) GetRecentLogs(count int) []AuditLogEntry {
 
 // Middleware functions
 
-// ValidationMiddleware validates request structure
+// ValidationMiddleware validates request structure.
 func ValidationMiddleware(validator *RequestValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// For POST/PUT/PATCH, validate Content-Type
-			if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
+			if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
 				if r.Body != nil && r.ContentLength > 0 {
 					if err := validator.ValidateContentType(r.Header.Get("Content-Type"), "application/json"); err != nil {
 						http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusBadRequest)
+
 						return
 					}
 				}
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// RateLimitMiddleware enforces rate limiting
+// RateLimitMiddleware enforces rate limiting.
 func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +287,7 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 			if !limiter.Allow(ip) {
 				w.Header().Set("Retry-After", "1")
 				http.Error(w, `{"error": "rate limit exceeded"}`, http.StatusTooManyRequests)
+
 				return
 			}
 
@@ -281,7 +296,7 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-// CORSMiddleware handles CORS headers
+// CORSMiddleware handles CORS headers.
 func CORSMiddleware(config *CORSConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -292,15 +307,18 @@ func CORSMiddleware(config *CORSConfig) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", strings.Join(config.AllowedMethods, ", "))
 				w.Header().Set("Access-Control-Allow-Headers", strings.Join(config.AllowedHeaders, ", "))
+
 				if config.AllowCredentials {
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 				}
-				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", config.MaxAge))
+
+				w.Header().Set("Access-Control-Max-Age", strconv.Itoa(config.MaxAge))
 			}
 
 			// Handle preflight requests
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
+
 				return
 			}
 
@@ -309,7 +327,7 @@ func CORSMiddleware(config *CORSConfig) func(http.Handler) http.Handler {
 	}
 }
 
-// AuditMiddleware logs all requests
+// AuditMiddleware logs all requests.
 func AuditMiddleware(logger *AuditLogger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -331,9 +349,10 @@ func AuditMiddleware(logger *AuditLogger) func(http.Handler) http.Handler {
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture status code
+// responseWriter wraps http.ResponseWriter to capture status code.
 type responseWriter struct {
 	http.ResponseWriter
+
 	statusCode int
 }
 

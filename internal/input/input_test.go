@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package input
 
 import (
@@ -23,6 +26,7 @@ func TestPDFParser_ValidatePDF(t *testing.T) {
 
 	// Invalid PDF
 	invalidData := []byte("not a pdf")
+
 	_, err := parser.ParseBytes(invalidData)
 	if err == nil {
 		t.Errorf("Expected error for invalid PDF")
@@ -34,6 +38,7 @@ func TestDOCXParser_ZipValidation(t *testing.T) {
 
 	// Invalid DOCX
 	invalidData := []byte("not a docx")
+
 	_, err := parser.ParseBytes(invalidData)
 	if err == nil {
 		t.Errorf("Expected error for invalid DOCX")
@@ -70,6 +75,7 @@ func TestEnhancedParser_ExtractPhone(t *testing.T) {
 
 	for _, tt := range tests {
 		result := extractPhone(tt.input)
+
 		hasResult := result != ""
 		if hasResult != tt.hasPhone {
 			t.Errorf("extractPhone(%s) found phone = %v, want %v", tt.input, hasResult, tt.hasPhone)
@@ -102,8 +108,8 @@ func TestLinkedInParser_ParseProfile(t *testing.T) {
 	`
 
 	parser := NewLinkedInParser()
-	profile, err := parser.ParseProfile(profileText)
 
+	profile, err := parser.ParseProfile(profileText)
 	if err != nil {
 		t.Errorf("ParseProfile returned error: %v", err)
 	}

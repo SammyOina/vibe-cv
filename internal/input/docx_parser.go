@@ -1,30 +1,35 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package input
 
 import (
 	"archive/zip"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 )
 
-// DOCXParser handles DOCX file parsing
+// DOCXParser handles DOCX file parsing.
 type DOCXParser struct {
 	maxFileSize int64
 }
 
-// NewDOCXParser creates a new DOCX parser
+// NewDOCXParser creates a new DOCX parser.
 func NewDOCXParser(maxFileSize int64) *DOCXParser {
 	if maxFileSize == 0 {
 		maxFileSize = 50 * 1024 * 1024 // 50MB default
 	}
+
 	return &DOCXParser{
 		maxFileSize: maxFileSize,
 	}
 }
 
-// ParseFile extracts text from a DOCX file
+// ParseFile extracts text from a DOCX file.
 func (p *DOCXParser) ParseFile(filePath string) (string, error) {
 	// Check file size
 	fileInfo, err := os.Stat(filePath)
@@ -52,10 +57,10 @@ func (p *DOCXParser) ParseFile(filePath string) (string, error) {
 	return p.ParseBytes(content)
 }
 
-// ParseBytes extracts text from DOCX bytes
+// ParseBytes extracts text from DOCX bytes.
 func (p *DOCXParser) ParseBytes(data []byte) (string, error) {
 	if len(data) == 0 {
-		return "", fmt.Errorf("empty DOCX data")
+		return "", errors.New("empty DOCX data")
 	}
 
 	// DOCX is a ZIP file, try to open it as such
@@ -66,15 +71,17 @@ func (p *DOCXParser) ParseBytes(data []byte) (string, error) {
 
 	// Look for document.xml
 	var docFile *zip.File
+
 	for _, f := range reader.File {
 		if f.Name == "word/document.xml" {
 			docFile = f
+
 			break
 		}
 	}
 
 	if docFile == nil {
-		return "", fmt.Errorf("document.xml not found in DOCX file")
+		return "", errors.New("document.xml not found in DOCX file")
 	}
 
 	// Read and parse document.xml
@@ -93,13 +100,13 @@ func (p *DOCXParser) ParseBytes(data []byte) (string, error) {
 	text := extractTextFromWordML(string(content))
 
 	if text == "" {
-		return "", fmt.Errorf("no text content found in DOCX")
+		return "", errors.New("no text content found in DOCX")
 	}
 
 	return text, nil
 }
 
-// WordMLDocument represents the structure of document.xml
+// WordMLDocument represents the structure of document.xml.
 type WordMLDocument struct {
 	Body struct {
 		Paragraphs []struct {
@@ -110,12 +117,13 @@ type WordMLDocument struct {
 	} `xml:"w:body"`
 }
 
-// extractTextFromWordML extracts text from Word ML XML
+// extractTextFromWordML extracts text from Word ML XML.
 func extractTextFromWordML(xmlContent string) string {
 	var doc WordMLDocument
 
 	// Parse XML
 	decoder := xml.NewDecoder(strings.NewReader(xmlContent))
+
 	err := decoder.Decode(&doc)
 	if err != nil && err != io.EOF {
 		// If XML parsing fails, try simple regex extraction
@@ -128,6 +136,7 @@ func extractTextFromWordML(xmlContent string) string {
 		for _, t := range para.Text {
 			result.WriteString(t.Content)
 		}
+
 		result.WriteRune('\n')
 	}
 
@@ -135,6 +144,7 @@ func extractTextFromWordML(xmlContent string) string {
 
 	// Clean up whitespace
 	lines := strings.Split(text, "\n")
+
 	var cleanedLines []string
 
 	for _, line := range lines {
@@ -147,7 +157,7 @@ func extractTextFromWordML(xmlContent string) string {
 	return strings.Join(cleanedLines, "\n")
 }
 
-// extractTextFromRawXML extracts text from XML using simple pattern matching
+// extractTextFromRawXML extracts text from XML using simple pattern matching.
 func extractTextFromRawXML(xmlContent string) string {
 	var result strings.Builder
 
@@ -175,6 +185,7 @@ func extractTextFromRawXML(xmlContent string) string {
 
 	// Clean up whitespace
 	lines := strings.Split(text, "\n")
+
 	var cleanedLines []string
 
 	for _, line := range lines {

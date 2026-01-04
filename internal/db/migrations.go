@@ -1,8 +1,11 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package db
 
 import migrate "github.com/rubenv/sql-migrate"
 
-// Migrations returns the in-code migration source
+// Migrations returns the in-code migration source.
 func Migrations() *migrate.MemoryMigrationSource {
 	return &migrate.MemoryMigrationSource{
 		Migrations: []*migrate.Migration{

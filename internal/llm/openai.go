@@ -1,21 +1,25 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package llm
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
 )
 
-// OpenAIProvider implements the Provider interface using OpenAI's API
+// OpenAIProvider implements the Provider interface using OpenAI's API.
 type OpenAIProvider struct {
 	client *openai.Client
 	model  string
 }
 
-// NewOpenAIProvider creates a new OpenAI provider
+// NewOpenAIProvider creates a new OpenAI provider.
 func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
 	return &OpenAIProvider{
 		client: openai.NewClient(apiKey),
@@ -23,7 +27,7 @@ func NewOpenAIProvider(apiKey, model string) *OpenAIProvider {
 	}
 }
 
-// Customize customizes a CV using OpenAI
+// Customize customizes a CV using OpenAI.
 func (p *OpenAIProvider) Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error) {
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
@@ -42,13 +46,12 @@ func (p *OpenAIProvider) Customize(ctx context.Context, cv, jobDescription strin
 		Temperature: 0.7,
 		TopP:        0.9,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to customize CV with OpenAI: %w", err)
 	}
 
 	if len(resp.Choices) == 0 {
-		return nil, fmt.Errorf("no response from OpenAI")
+		return nil, errors.New("no response from OpenAI")
 	}
 
 	content := resp.Choices[0].Message.Content
@@ -61,7 +64,7 @@ func (p *OpenAIProvider) Customize(ctx context.Context, cv, jobDescription strin
 	}, nil
 }
 
-// GetName returns the provider name
+// GetName returns the provider name.
 func (p *OpenAIProvider) GetName() string {
 	return "openai"
 }
@@ -100,14 +103,14 @@ Original CV:
 Return your response as a valid JSON object with the structure specified in your instructions.`, jobDescription, cv, contextStr)
 }
 
-// responseJSON represents the expected JSON response from the LLM
+// responseJSON represents the expected JSON response from the LLM.
 type responseJSON struct {
 	CustomizedCV  string   `json:"customized_cv"`
 	MatchScore    float64  `json:"match_score"`
 	Modifications []string `json:"modifications"`
 }
 
-// parseResponse parses the LLM response
+// parseResponse parses the LLM response.
 func parseResponse(content string) (string, float64, []string) {
 	// Extract JSON from response (might have additional text)
 	startIdx := strings.Index(content, "{")
@@ -122,6 +125,7 @@ func parseResponse(content string) (string, float64, []string) {
 
 	// Try to parse as JSON
 	var resp responseJSON
+
 	err := json.Unmarshal([]byte(jsonStr), &resp)
 	if err != nil {
 		// Fallback to basic string extraction

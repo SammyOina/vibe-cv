@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package db
 
 import (
@@ -5,12 +8,13 @@ import (
 	"fmt"
 	"time"
 
+	// Import postgres driver for database/sql.
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
 )
 
 // InitDB initializes the database connection and runs migrations
-// with optimized connection pooling configuration
+// with optimized connection pooling configuration.
 func InitDB(databaseURL string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
@@ -40,6 +44,7 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 
 	// Run migrations
 	migrations := Migrations()
+
 	n, err := migrate.ExecMax(db, "postgres", migrations, migrate.Up, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
@@ -56,7 +61,7 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 	return db, nil
 }
 
-// createOptimizationIndexes creates indexes for better query performance
+// createOptimizationIndexes creates indexes for better query performance.
 func createOptimizationIndexes(db *sql.DB) error {
 	indexes := []string{
 		// Index on cv_versions.created_at for time-range queries
@@ -102,7 +107,7 @@ func createOptimizationIndexes(db *sql.DB) error {
 	return nil
 }
 
-// Close closes the database connection
+// Close closes the database connection.
 func Close(db *sql.DB) error {
 	return db.Close()
 }

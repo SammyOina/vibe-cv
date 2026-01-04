@@ -1,13 +1,16 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package config
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/joho/godotenv"
 )
 
-// Config holds application configuration
+// Config holds application configuration.
 type Config struct {
 	LLMProvider     string
 	LLMAPIKey       string
@@ -22,7 +25,7 @@ type Config struct {
 	KratosAdminURL  string
 }
 
-// Load loads configuration from environment variables and .env file
+// Load loads configuration from environment variables and .env file.
 func Load() (*Config, error) {
 	// Try loading from .env file (won't fail if not present)
 	_ = godotenv.Load()
@@ -43,16 +46,17 @@ func Load() (*Config, error) {
 
 	// Validate required fields
 	if cfg.LLMAPIKey == "" {
-		return nil, fmt.Errorf("LLM_API_KEY environment variable not set")
+		return nil, errors.New("LLM_API_KEY environment variable not set")
 	}
 
 	return cfg, nil
 }
 
-// getEnv gets an environment variable with a default value
+// getEnv gets an environment variable with a default value.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
+
 	return defaultValue
 }

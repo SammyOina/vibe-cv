@@ -1,12 +1,15 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package input
 
 import (
-	"fmt"
+	"errors"
 	"regexp"
 	"strings"
 )
 
-// LinkedInProfile represents a parsed LinkedIn profile
+// LinkedInProfile represents a parsed LinkedIn profile.
 type LinkedInProfile struct {
 	Name       string
 	Title      string
@@ -17,7 +20,7 @@ type LinkedInProfile struct {
 	RawProfile string
 }
 
-// Experience represents a work experience entry
+// Experience represents a work experience entry.
 type Experience struct {
 	Title       string
 	Company     string
@@ -25,7 +28,7 @@ type Experience struct {
 	Description string
 }
 
-// Education represents an education entry
+// Education represents an education entry.
 type Education struct {
 	School   string
 	Degree   string
@@ -33,19 +36,19 @@ type Education struct {
 	Duration string
 }
 
-// LinkedInParser handles LinkedIn profile parsing
+// LinkedInParser handles LinkedIn profile parsing.
 type LinkedInParser struct{}
 
-// NewLinkedInParser creates a new LinkedIn parser
+// NewLinkedInParser creates a new LinkedIn parser.
 func NewLinkedInParser() *LinkedInParser {
 	return &LinkedInParser{}
 }
 
 // ParseProfile parses a LinkedIn profile from fetched content
-// This expects the HTML content or exported profile text
+// This expects the HTML content or exported profile text.
 func (lp *LinkedInParser) ParseProfile(content string) (*LinkedInProfile, error) {
 	if content == "" {
-		return nil, fmt.Errorf("empty profile content")
+		return nil, errors.New("empty profile content")
 	}
 
 	profile := &LinkedInProfile{
@@ -76,7 +79,7 @@ func (lp *LinkedInParser) ParseProfile(content string) (*LinkedInProfile, error)
 	return profile, nil
 }
 
-// ToText converts the profile to readable text format
+// ToText converts the profile to readable text format.
 func (p *LinkedInProfile) ToText() string {
 	var sb strings.Builder
 
@@ -94,17 +97,22 @@ func (p *LinkedInProfile) ToText() string {
 
 	if len(p.Experience) > 0 {
 		sb.WriteString("\nExperience:\n")
+
 		for _, exp := range p.Experience {
 			if exp.Title != "" {
 				sb.WriteString("- " + exp.Title)
+
 				if exp.Company != "" {
 					sb.WriteString(" at " + exp.Company)
 				}
+
 				sb.WriteString("\n")
 			}
+
 			if exp.Duration != "" {
 				sb.WriteString("  " + exp.Duration + "\n")
 			}
+
 			if exp.Description != "" {
 				sb.WriteString("  " + exp.Description + "\n")
 			}
@@ -113,6 +121,7 @@ func (p *LinkedInProfile) ToText() string {
 
 	if len(p.Skills) > 0 {
 		sb.WriteString("\nSkills:\n")
+
 		for _, skill := range p.Skills {
 			sb.WriteString("- " + skill + "\n")
 		}
@@ -120,15 +129,18 @@ func (p *LinkedInProfile) ToText() string {
 
 	if len(p.Education) > 0 {
 		sb.WriteString("\nEducation:\n")
+
 		for _, edu := range p.Education {
 			if edu.School != "" {
 				sb.WriteString("- " + edu.School + "\n")
 			}
+
 			if edu.Degree != "" && edu.Field != "" {
 				sb.WriteString("  " + edu.Degree + " in " + edu.Field + "\n")
 			} else if edu.Degree != "" {
 				sb.WriteString("  " + edu.Degree + "\n")
 			}
+
 			if edu.Duration != "" {
 				sb.WriteString("  " + edu.Duration + "\n")
 			}
@@ -138,7 +150,7 @@ func (p *LinkedInProfile) ToText() string {
 	return sb.String()
 }
 
-// extractName extracts the profile name
+// extractName extracts the profile name.
 func extractName(content string) string {
 	// Look for common LinkedIn name patterns
 	patterns := []string{
@@ -149,6 +161,7 @@ func extractName(content string) string {
 
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
+
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			return strings.TrimSpace(matches[1])
@@ -158,7 +171,7 @@ func extractName(content string) string {
 	return ""
 }
 
-// extractTitle extracts the job title
+// extractTitle extracts the job title.
 func extractTitle(content string) string {
 	patterns := []string{
 		`(?i)(?:title|position)[\s:]*([^\n]+)`,
@@ -167,6 +180,7 @@ func extractTitle(content string) string {
 
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
+
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			title := strings.TrimSpace(matches[1])
@@ -190,7 +204,7 @@ func extractTitle(content string) string {
 	return ""
 }
 
-// extractSummary extracts the profile summary
+// extractSummary extracts the profile summary.
 func extractSummary(content string) string {
 	patterns := []string{
 		`(?i)(?:summary|about)[\s:]*([^\n]+(?:\n[^\n]+){0,10})`,
@@ -199,6 +213,7 @@ func extractSummary(content string) string {
 
 	for _, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
+
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			summary := strings.TrimSpace(matches[1])
@@ -211,13 +226,15 @@ func extractSummary(content string) string {
 	return ""
 }
 
-// extractExperience extracts work experience entries
+// extractExperience extracts work experience entries.
 func extractExperience(content string) []Experience {
 	var experiences []Experience
 
 	// Split content by common experience markers
 	lines := strings.Split(content, "\n")
+
 	var currentExp Experience
+
 	inExpSection := false
 
 	for i := 0; i < len(lines); i++ {
@@ -226,6 +243,7 @@ func extractExperience(content string) []Experience {
 		// Check for experience section start
 		if strings.Contains(strings.ToLower(line), "experience") {
 			inExpSection = true
+
 			continue
 		}
 
@@ -271,9 +289,10 @@ func extractExperience(content string) []Experience {
 	return experiences
 }
 
-// extractSkills extracts skills from the profile
+// extractSkills extracts skills from the profile.
 func extractSkills(content string) []string {
 	var skills []string
+
 	lines := strings.Split(content, "\n")
 	inSkillsSection := false
 
@@ -282,6 +301,7 @@ func extractSkills(content string) []string {
 
 		if strings.Contains(strings.ToLower(trimmed), "skills") {
 			inSkillsSection = true
+
 			continue
 		}
 
@@ -309,11 +329,13 @@ func extractSkills(content string) []string {
 	return skills
 }
 
-// extractEducation extracts education entries
+// extractEducation extracts education entries.
 func extractEducation(content string) []Education {
 	var educations []Education
+
 	lines := strings.Split(content, "\n")
 	inEduSection := false
+
 	var currentEdu Education
 
 	for _, line := range lines {
@@ -321,6 +343,7 @@ func extractEducation(content string) []Education {
 
 		if strings.Contains(strings.ToLower(trimmed), "education") {
 			inEduSection = true
+
 			continue
 		}
 
@@ -333,6 +356,7 @@ func extractEducation(content string) []Education {
 			strings.Contains(strings.ToLower(trimmed), "experience")) &&
 			currentEdu.School != "" {
 			educations = append(educations, currentEdu)
+
 			break
 		}
 
@@ -341,6 +365,7 @@ func extractEducation(content string) []Education {
 				educations = append(educations, currentEdu)
 				currentEdu = Education{}
 			}
+
 			continue
 		}
 
@@ -349,6 +374,7 @@ func extractEducation(content string) []Education {
 			if currentEdu.School != "" {
 				educations = append(educations, currentEdu)
 			}
+
 			currentEdu = Education{School: trimmed}
 		} else if currentEdu.School != "" {
 			// Degree or field

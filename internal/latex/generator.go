@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package latex
 
 import (
@@ -7,13 +10,13 @@ import (
 	"path/filepath"
 )
 
-// LaTeXGenerator generates LaTeX content and compiles to PDF
+// LaTeXGenerator generates LaTeX content and compiles to PDF.
 type LaTeXGenerator struct {
 	outputDir string
 	laTeXPath string
 }
 
-// NewLaTeXGenerator creates a new LaTeX generator
+// NewLaTeXGenerator creates a new LaTeX generator.
 func NewLaTeXGenerator(outputDir, laTeXPath string) *LaTeXGenerator {
 	return &LaTeXGenerator{
 		outputDir: outputDir,
@@ -21,10 +24,10 @@ func NewLaTeXGenerator(outputDir, laTeXPath string) *LaTeXGenerator {
 	}
 }
 
-// GeneratePDF generates a PDF from CV content
+// GeneratePDF generates a PDF from CV content.
 func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string) (string, error) {
 	// Ensure output directory exists
-	if err := os.MkdirAll(lg.outputDir, 0755); err != nil {
+	if err := os.MkdirAll(lg.outputDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -33,7 +36,8 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string) (string
 
 	// Write LaTeX file
 	texFile := filepath.Join(lg.outputDir, filename+".tex")
-	err := os.WriteFile(texFile, []byte(latexContent), 0644)
+
+	err := os.WriteFile(texFile, []byte(latexContent), 0o644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write LaTeX file: %w", err)
 	}
@@ -61,7 +65,7 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string) (string
 	return pdfFile, nil
 }
 
-// generateLaTeXTemplate generates a basic LaTeX template for CV
+// generateLaTeXTemplate generates a basic LaTeX template for CV.
 func generateLaTeXTemplate(cvContent string) string {
 	template := `\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}

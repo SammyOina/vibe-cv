@@ -382,6 +382,36 @@ The project uses a pluggable LLM architecture that supports:
 
 Configuration is flexible and can be set per-request or globally.
 
+## Development
+
+### Running Tests
+
+Run the comprehensive test suite:
+
+```bash
+./test.sh
+```
+
+Or run Go tests directly:
+
+```bash
+go test -v -race -coverprofile=coverage.out ./...
+```
+
+### Linting
+
+Before submitting a PR, ensure your code passes linting:
+
+```bash
+golangci-lint run ./...
+```
+
+The project uses a comprehensive linting configuration (`.golangci.yml`) that checks for:
+- Error handling (`errcheck`)
+- Code quality (`staticcheck`, `govet`)
+- Performance issues (`gocritic`)
+- Code style (`revive`, `godot`)
+
 ## Contributing
 
 Contributions are welcome! Please follow these guidelines:
@@ -389,8 +419,9 @@ Contributions are welcome! Please follow these guidelines:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+4. **Run tests and linting** (`go test ./... && golangci-lint run ./...`)
+5. Push to branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request
 
 ## License
 

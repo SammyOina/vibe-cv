@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package main
 
 import (
@@ -6,7 +9,7 @@ import (
 	"github.com/sammyoina/vibe-cv/internal/config"
 )
 
-// TestConfigLoad tests configuration loading
+// TestConfigLoad tests configuration loading.
 func TestConfigLoad(t *testing.T) {
 	// Set environment variables for testing
 	t.Setenv("LLM_PROVIDER", "openai")
@@ -27,7 +30,7 @@ func TestConfigLoad(t *testing.T) {
 	}
 }
 
-// TestConfigDefaults tests default configuration values
+// TestConfigDefaults tests default configuration values.
 func TestConfigDefaults(t *testing.T) {
 	t.Setenv("LLM_API_KEY", "test-key")
 	// Don't set other values to test defaults
@@ -46,7 +49,7 @@ func TestConfigDefaults(t *testing.T) {
 	}
 }
 
-// TestConfigValidation tests configuration validation
+// TestConfigValidation tests configuration validation.
 func TestConfigValidation(t *testing.T) {
 	t.Setenv("LLM_PROVIDER", "openai")
 	// Don't set LLM_API_KEY to test validation

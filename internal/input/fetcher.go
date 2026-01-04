@@ -1,6 +1,10 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package input
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,17 +12,18 @@ import (
 	"time"
 )
 
-// Fetcher handles fetching content from URLs
+// Fetcher handles fetching content from URLs.
 type Fetcher struct {
 	httpClient *http.Client
 	timeout    time.Duration
 }
 
-// NewFetcher creates a new URL fetcher
+// NewFetcher creates a new URL fetcher.
 func NewFetcher(timeout time.Duration) *Fetcher {
 	if timeout == 0 {
 		timeout = 30 * time.Second
 	}
+
 	return &Fetcher{
 		httpClient: &http.Client{
 			Timeout: timeout,
@@ -27,10 +32,10 @@ func NewFetcher(timeout time.Duration) *Fetcher {
 	}
 }
 
-// FetchJobDescription fetches job description from a URL
+// FetchJobDescription fetches job description from a URL.
 func (f *Fetcher) FetchJobDescription(url string) (string, error) {
 	if url == "" {
-		return "", fmt.Errorf("URL cannot be empty")
+		return "", errors.New("URL cannot be empty")
 	}
 
 	// Validate URL format
@@ -59,13 +64,13 @@ func (f *Fetcher) FetchJobDescription(url string) (string, error) {
 	text := extractTextFromHTML(string(body))
 
 	if text == "" {
-		return "", fmt.Errorf("no meaningful content extracted from URL")
+		return "", errors.New("no meaningful content extracted from URL")
 	}
 
 	return text, nil
 }
 
-// extractTextFromHTML is a simple HTML to text converter
+// extractTextFromHTML is a simple HTML to text converter.
 func extractTextFromHTML(html string) string {
 	// Remove script and style elements
 	html = removeHTMLTags("script", html)
@@ -79,6 +84,7 @@ func extractTextFromHTML(html string) string {
 
 	// Remove all HTML tags
 	inTag := false
+
 	var result strings.Builder
 
 	for _, r := range html {
@@ -86,6 +92,7 @@ func extractTextFromHTML(html string) string {
 			inTag = true
 		} else if r == '>' {
 			inTag = false
+
 			result.WriteRune(' ')
 		} else if !inTag {
 			result.WriteRune(r)
@@ -96,7 +103,9 @@ func extractTextFromHTML(html string) string {
 
 	// Clean up whitespace
 	lines := strings.Split(text, "\n")
+
 	var cleanedLines []string
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line != "" {
@@ -107,7 +116,7 @@ func extractTextFromHTML(html string) string {
 	return strings.Join(cleanedLines, "\n")
 }
 
-// removeHTMLTags removes specific HTML tags and their content
+// removeHTMLTags removes specific HTML tags and their content.
 func removeHTMLTags(tagName, html string) string {
 	opening := "<" + tagName
 	closing := "</" + tagName + ">"
@@ -121,6 +130,7 @@ func removeHTMLTags(tagName, html string) string {
 		endIdx := strings.Index(strings.ToLower(html), strings.ToLower(closing))
 		if endIdx == -1 {
 			html = html[:startIdx]
+
 			break
 		}
 
@@ -130,7 +140,7 @@ func removeHTMLTags(tagName, html string) string {
 	return html
 }
 
-// IsValidJobURL checks if a URL is likely a job listing
+// IsValidJobURL checks if a URL is likely a job listing.
 func IsValidJobURL(url string) bool {
 	lowercaseURL := strings.ToLower(url)
 
