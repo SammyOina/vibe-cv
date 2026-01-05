@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sammyoina/vibe-cv/internal/auth"
+	"github.com/sammyoina/vibe-cv/pkg/auth"
 )
 
 // RequestValidator validates HTTP request structure and content.

@@ -15,12 +15,12 @@ import (
 	"syscall"
 
 	"github.com/sammyoina/vibe-cv/api"
-	"github.com/sammyoina/vibe-cv/internal/auth"
 	"github.com/sammyoina/vibe-cv/internal/config"
 	"github.com/sammyoina/vibe-cv/internal/db"
 	"github.com/sammyoina/vibe-cv/internal/llm"
 	"github.com/sammyoina/vibe-cv/internal/observability"
 	"github.com/sammyoina/vibe-cv/internal/security"
+	"github.com/sammyoina/vibe-cv/pkg/auth"
 )
 
 func main() {
