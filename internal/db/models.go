@@ -364,3 +364,65 @@ func (r *Repository) GetAnalyticsStats(identityID *int, limit int) ([]*Analytics
 
 	return snapshots, rows.Err()
 }
+
+// GetIdentityByKratosID retrieves an identity by Kratos ID.
+func (r *Repository) GetIdentityByKratosID(kratosID string) (*Identity, error) {
+	var identity Identity
+
+	err := r.db.QueryRow(
+		"SELECT id, kratos_id, email, created_at, updated_at FROM identities WHERE kratos_id = $1",
+		kratosID,
+	).Scan(&identity.ID, &identity.KratosID, &identity.Email, &identity.CreatedAt, &identity.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &identity, nil
+}
+
+// CreateIdentity creates a new identity record.
+func (r *Repository) CreateIdentity(kratosID string, email string) (*Identity, error) {
+	var id int
+
+	err := r.db.QueryRow(
+		"INSERT INTO identities (kratos_id, email) VALUES ($1, $2) RETURNING id",
+		kratosID, email,
+	).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Identity{
+		ID:        id,
+		KratosID:  &kratosID,
+		Email:     &email,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}, nil
+}
+
+// GetOrCreateIdentity gets an existing identity or creates a new one.
+func (r *Repository) GetOrCreateIdentity(kratosID string, email string) (*Identity, error) {
+	// Try to get existing identity
+	identity, err := r.GetIdentityByKratosID(kratosID)
+	if err == nil {
+		// Update email if it has changed
+		if identity.Email == nil || *identity.Email != email {
+			_, updateErr := r.db.Exec(
+				"UPDATE identities SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+				email, identity.ID,
+			)
+			if updateErr == nil {
+				identity.Email = &email
+			}
+		}
+		return identity, nil
+	}
+
+	// If not found, create new identity
+	if err == sql.ErrNoRows {
+		return r.CreateIdentity(kratosID, email)
+	}
+
+	return nil, err
+}

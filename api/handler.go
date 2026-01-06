@@ -93,12 +93,15 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	// Extract user if authenticated
 	var identityID *int
 	if user := auth.GetUser(r.Context()); user != nil {
-		// In a real implementation, map user ID to database identity
-		// For now, create a placeholder identity ID from user email hash
-		// This should be replaced with proper user->identity mapping from DB
-		if user.Email != "" {
-			// Skip analytics if no proper identity mapping
-			_ = user
+		// Map Kratos user to database identity
+		if user.KratosID != "" {
+			identity, err := h.repo.GetOrCreateIdentity(user.KratosID, user.Email)
+			if err != nil {
+				// Log error but don't fail the request
+				fmt.Printf("Failed to get/create identity: %v\n", err)
+			} else {
+				identityID = &identity.ID
+			}
 		}
 	}
 
@@ -152,10 +155,14 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 		MatchScore:      result.MatchScore,
 		Modifications:   result.Modifications,
 	}
-	// TODO: Record analytics snapshot when identity mapping is implemented
-	// if identityID != nil {
-	//	_ = h.repo.RecordAnalyticsSnapshot(identityID, &result.MatchScore, nil, nil)
-	// }
+
+	// Record analytics snapshot if user is authenticated
+	if identityID != nil {
+		if err := h.repo.RecordAnalyticsSnapshot(identityID, &result.MatchScore, nil, nil); err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Failed to record analytics: %v\n", err)
+		}
+	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(customizeResp)
@@ -183,7 +190,20 @@ func (h *LatestHandler) BatchCustomize(w http.ResponseWriter, r *http.Request) {
 		itemMaps[i] = item.(map[string]interface{})
 	}
 
+	// Extract user if authenticated
 	var identityID *int
+	if user := auth.GetUser(r.Context()); user != nil {
+		// Map Kratos user to database identity
+		if user.KratosID != "" {
+			identity, err := h.repo.GetOrCreateIdentity(user.KratosID, user.Email)
+			if err != nil {
+				// Log error but don't fail the request
+				fmt.Printf("Failed to get/create identity: %v\n", err)
+			} else {
+				identityID = &identity.ID
+			}
+		}
+	}
 
 	// Create batch job with number of items
 	jobID, err := h.queue.CreateJob(identityID, len(items))
