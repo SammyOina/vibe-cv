@@ -26,21 +26,16 @@ func TestNewClient(t *testing.T) {
 
 func TestClientOptions(t *testing.T) {
 	timeout := 60 * time.Second
-	token := "test-token"
 	userAgent := "test-agent/1.0"
 
 	client := NewClient(
 		"http://localhost:8080",
 		WithTimeout(timeout),
-		WithAuthToken(token),
 		WithUserAgent(userAgent),
 	)
 
 	if client.httpClient.Timeout != timeout {
 		t.Errorf("expected timeout %v, got %v", timeout, client.httpClient.Timeout)
-	}
-	if client.authToken != token {
-		t.Errorf("expected auth token %s, got %s", token, client.authToken)
 	}
 	if client.userAgent != userAgent {
 		t.Errorf("expected user agent %s, got %s", userAgent, client.userAgent)

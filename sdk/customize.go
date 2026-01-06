@@ -9,7 +9,7 @@ import (
 )
 
 // CustomizeCV customizes a CV for a specific job description.
-func (c *Client) CustomizeCV(ctx context.Context, req *CustomizeCVRequest) (*CustomizeCVResponse, error) {
+func (c *Client) CustomizeCV(ctx context.Context, req *CustomizeCVRequest, opts ...RequestOption) (*CustomizeCVResponse, error) {
 	if req == nil {
 		return nil, &ValidationError{Field: "request", Message: "request cannot be nil"}
 	}
@@ -21,7 +21,7 @@ func (c *Client) CustomizeCV(ctx context.Context, req *CustomizeCVRequest) (*Cus
 	}
 
 	var resp CustomizeCVResponse
-	if err := c.doRequest(ctx, "POST", "/api/latest/customize-cv", req, &resp); err != nil {
+	if err := c.doRequest(ctx, "POST", "/api/latest/customize-cv", req, &resp, opts...); err != nil {
 		return nil, fmt.Errorf("failed to customize CV: %w", err)
 	}
 

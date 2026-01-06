@@ -19,6 +19,12 @@ func main() {
 		serverURL = "http://localhost:8080"
 	}
 
+	// Get auth token from environment
+	authToken := os.Getenv("VIBE_CV_TOKEN")
+	if authToken == "" {
+		log.Fatal("VIBE_CV_TOKEN environment variable is required")
+	}
+
 	// Create a new SDK client with custom options
 	client := sdk.NewClient(
 		serverURL,
@@ -27,7 +33,7 @@ func main() {
 
 	ctx := context.Background()
 
-	// 1. Health Check
+	// 1. Health Check (no auth required)
 	fmt.Println("=== Health Check ===")
 	if err := client.Ping(ctx); err != nil {
 		log.Fatalf("Service is not healthy: %v", err)
@@ -40,7 +46,7 @@ func main() {
 	cvContent := "Software Engineer with 5 years of experience in Go and cloud technologies..."
 	jobDesc := "Senior Backend Engineer - Go, Kubernetes, AWS"
 
-	// Try with OpenAI
+	// Try with OpenAI (requires authentication)
 	fmt.Println("Customizing with OpenAI GPT-4...")
 	req := &sdk.CustomizeCVRequest{
 		CV:             cvContent,
@@ -55,7 +61,7 @@ func main() {
 		},
 	}
 
-	resp, err := client.CustomizeCV(ctx, req)
+	resp, err := client.CustomizeCV(ctx, req, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		// Demonstrate error handling
 		if apiErr, ok := err.(*sdk.APIError); ok {
@@ -77,7 +83,7 @@ func main() {
 	// Assume we have a CV ID from previous customization
 	cvID := 1
 
-	versions, err := client.GetVersions(ctx, cvID)
+	versions, err := client.GetVersions(ctx, cvID, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		fmt.Printf("Could not fetch versions: %v\n", err)
 	} else {
@@ -85,7 +91,7 @@ func main() {
 
 		if len(versions) >= 2 {
 			// Compare two versions
-			comparison, err := client.CompareVersions(ctx, versions[0].ID, versions[1].ID)
+			comparison, err := client.CompareVersions(ctx, versions[0].ID, versions[1].ID, sdk.WithRequestAuthToken(authToken))
 			if err != nil {
 				fmt.Printf("Could not compare versions: %v\n", err)
 			} else {
@@ -101,7 +107,7 @@ func main() {
 	// 4. Download CV
 	fmt.Println("=== Download CV ===")
 	versionID := 1
-	pdfData, err := client.DownloadCV(ctx, versionID)
+	pdfData, err := client.DownloadCV(ctx, versionID, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		fmt.Printf("Could not download CV: %v\n", err)
 	} else {
@@ -116,7 +122,7 @@ func main() {
 
 	// 5. Analytics
 	fmt.Println("=== Analytics ===")
-	analytics, err := client.GetAnalytics(ctx, 10)
+	analytics, err := client.GetAnalytics(ctx, 10, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		fmt.Printf("Could not fetch analytics: %v\n", err)
 	} else {
@@ -132,7 +138,7 @@ func main() {
 
 	// 6. Dashboard
 	fmt.Println("=== Dashboard Statistics ===")
-	dashboard, err := client.GetDashboard(ctx)
+	dashboard, err := client.GetDashboard(ctx, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		fmt.Printf("Could not fetch dashboard: %v\n", err)
 	} else {

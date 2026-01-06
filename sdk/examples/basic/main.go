@@ -19,6 +19,12 @@ func main() {
 		serverURL = "http://localhost:8080"
 	}
 
+	// Get auth token from environment
+	authToken := os.Getenv("VIBE_CV_TOKEN")
+	if authToken == "" {
+		log.Fatal("VIBE_CV_TOKEN environment variable is required")
+	}
+
 	// Create a new SDK client
 	client := sdk.NewClient(serverURL)
 
@@ -62,7 +68,7 @@ We are looking for a Senior Backend Engineer with:
 		},
 	}
 
-	resp, err := client.CustomizeCV(context.Background(), req)
+	resp, err := client.CustomizeCV(context.Background(), req, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		log.Fatalf("Failed to customize CV: %v", err)
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 // GetAnalytics retrieves analytics data for the current user.
-func (c *Client) GetAnalytics(ctx context.Context, limit int) (*Analytics, error) {
+func (c *Client) GetAnalytics(ctx context.Context, limit int, opts ...RequestOption) (*Analytics, error) {
 	if limit < 0 {
 		return nil, &ValidationError{Field: "limit", Message: "limit cannot be negative"}
 	}
@@ -20,7 +20,7 @@ func (c *Client) GetAnalytics(ctx context.Context, limit int) (*Analytics, error
 	}
 
 	var analytics Analytics
-	if err := c.doRequest(ctx, "GET", path, nil, &analytics); err != nil {
+	if err := c.doRequest(ctx, "GET", path, nil, &analytics, opts...); err != nil {
 		return nil, fmt.Errorf("failed to get analytics: %w", err)
 	}
 
@@ -28,9 +28,9 @@ func (c *Client) GetAnalytics(ctx context.Context, limit int) (*Analytics, error
 }
 
 // GetDashboard retrieves global dashboard statistics.
-func (c *Client) GetDashboard(ctx context.Context) (*Dashboard, error) {
+func (c *Client) GetDashboard(ctx context.Context, opts ...RequestOption) (*Dashboard, error) {
 	var dashboard Dashboard
-	if err := c.doRequest(ctx, "GET", "/api/latest/dashboard", nil, &dashboard); err != nil {
+	if err := c.doRequest(ctx, "GET", "/api/latest/dashboard", nil, &dashboard, opts...); err != nil {
 		return nil, fmt.Errorf("failed to get dashboard: %w", err)
 	}
 

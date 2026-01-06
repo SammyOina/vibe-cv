@@ -9,9 +9,9 @@ import (
 )
 
 // Health performs a health check on the vibe-cv service.
-func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
+func (c *Client) Health(ctx context.Context, opts ...RequestOption) (*HealthResponse, error) {
 	var health HealthResponse
-	if err := c.doRequest(ctx, "GET", "/api/latest/health", nil, &health); err != nil {
+	if err := c.doRequest(ctx, "GET", "/api/latest/health", nil, &health, opts...); err != nil {
 		return nil, fmt.Errorf("health check failed: %w", err)
 	}
 
@@ -20,8 +20,8 @@ func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
 
 // Ping performs a simple connectivity check to the vibe-cv service.
 // It returns nil if the service is reachable and healthy.
-func (c *Client) Ping(ctx context.Context) error {
-	health, err := c.Health(ctx)
+func (c *Client) Ping(ctx context.Context, opts ...RequestOption) error {
+	health, err := c.Health(ctx, opts...)
 	if err != nil {
 		return err
 	}

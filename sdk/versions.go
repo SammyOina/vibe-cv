@@ -9,14 +9,14 @@ import (
 )
 
 // GetVersions retrieves all versions for a specific CV.
-func (c *Client) GetVersions(ctx context.Context, cvID int) ([]*CVVersion, error) {
+func (c *Client) GetVersions(ctx context.Context, cvID int, opts ...RequestOption) ([]*CVVersion, error) {
 	if cvID <= 0 {
 		return nil, &ValidationError{Field: "cvID", Message: "CV ID must be positive"}
 	}
 
 	path := fmt.Sprintf("/api/latest/versions/%d", cvID)
 	var versions []*CVVersion
-	if err := c.doRequest(ctx, "GET", path, nil, &versions); err != nil {
+	if err := c.doRequest(ctx, "GET", path, nil, &versions, opts...); err != nil {
 		return nil, fmt.Errorf("failed to get versions: %w", err)
 	}
 
@@ -24,14 +24,14 @@ func (c *Client) GetVersions(ctx context.Context, cvID int) ([]*CVVersion, error
 }
 
 // GetVersionDetail retrieves detailed information about a specific CV version.
-func (c *Client) GetVersionDetail(ctx context.Context, versionID int) (*CVVersion, error) {
+func (c *Client) GetVersionDetail(ctx context.Context, versionID int, opts ...RequestOption) (*CVVersion, error) {
 	if versionID <= 0 {
 		return nil, &ValidationError{Field: "versionID", Message: "version ID must be positive"}
 	}
 
 	path := fmt.Sprintf("/api/latest/versions/%d/detail", versionID)
 	var version CVVersion
-	if err := c.doRequest(ctx, "GET", path, nil, &version); err != nil {
+	if err := c.doRequest(ctx, "GET", path, nil, &version, opts...); err != nil {
 		return nil, fmt.Errorf("failed to get version detail: %w", err)
 	}
 
@@ -39,7 +39,7 @@ func (c *Client) GetVersionDetail(ctx context.Context, versionID int) (*CVVersio
 }
 
 // CompareVersions compares two CV versions.
-func (c *Client) CompareVersions(ctx context.Context, versionID1, versionID2 int) (*VersionComparison, error) {
+func (c *Client) CompareVersions(ctx context.Context, versionID1, versionID2 int, opts ...RequestOption) (*VersionComparison, error) {
 	if versionID1 <= 0 {
 		return nil, &ValidationError{Field: "versionID1", Message: "version ID 1 must be positive"}
 	}
@@ -53,7 +53,7 @@ func (c *Client) CompareVersions(ctx context.Context, versionID1, versionID2 int
 	}
 
 	var comparison VersionComparison
-	if err := c.doRequest(ctx, "POST", "/api/latest/compare-versions", req, &comparison); err != nil {
+	if err := c.doRequest(ctx, "POST", "/api/latest/compare-versions", req, &comparison, opts...); err != nil {
 		return nil, fmt.Errorf("failed to compare versions: %w", err)
 	}
 
@@ -61,13 +61,13 @@ func (c *Client) CompareVersions(ctx context.Context, versionID1, versionID2 int
 }
 
 // DownloadCV downloads a CV version as a PDF or text file.
-func (c *Client) DownloadCV(ctx context.Context, versionID int) ([]byte, error) {
+func (c *Client) DownloadCV(ctx context.Context, versionID int, opts ...RequestOption) ([]byte, error) {
 	if versionID <= 0 {
 		return nil, &ValidationError{Field: "versionID", Message: "version ID must be positive"}
 	}
 
 	path := fmt.Sprintf("/api/latest/download/%d", versionID)
-	data, err := c.doRequestRaw(ctx, "GET", path, nil)
+	data, err := c.doRequestRaw(ctx, "GET", path, nil, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download CV: %w", err)
 	}

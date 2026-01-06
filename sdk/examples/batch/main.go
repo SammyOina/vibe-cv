@@ -20,6 +20,12 @@ func main() {
 		serverURL = "http://localhost:8080"
 	}
 
+	// Get auth token from environment
+	authToken := os.Getenv("VIBE_CV_TOKEN")
+	if authToken == "" {
+		log.Fatal("VIBE_CV_TOKEN environment variable is required")
+	}
+
 	// Create a new SDK client
 	client := sdk.NewClient(serverURL)
 
@@ -71,7 +77,7 @@ SKILLS:
 
 	// Submit batch job
 	fmt.Printf("Submitting batch job for %d positions...\n", len(jobs))
-	batchResp, err := client.BatchCustomize(context.Background(), items)
+	batchResp, err := client.BatchCustomize(context.Background(), items, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		log.Fatalf("Failed to submit batch job: %v", err)
 	}
@@ -84,7 +90,7 @@ SKILLS:
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	results, err := client.WaitForBatch(ctx, batchResp.JobID, 3*time.Second)
+	results, err := client.WaitForBatch(ctx, batchResp.JobID, 3*time.Second, sdk.WithRequestAuthToken(authToken))
 	if err != nil {
 		log.Fatalf("Failed to wait for batch: %v", err)
 	}

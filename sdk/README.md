@@ -25,7 +25,7 @@ func main() {
     // Create a new client
     client := sdk.NewClient("http://localhost:8080")
     
-    // Customize a CV
+    // Customize a CV with per-request authentication
     req := &sdk.CustomizeCVRequest{
         CV:             "Your CV content here...",
         JobDescription: "Job description here...",
@@ -35,7 +35,12 @@ func main() {
         },
     }
     
-    resp, err := client.CustomizeCV(context.Background(), req)
+    // Pass authentication token with the request
+    resp, err := client.CustomizeCV(
+        context.Background(),
+        req,
+        sdk.WithRequestAuthToken("user-session-token"),
+    )
     if err != nil {
         log.Fatal(err)
     }
@@ -54,6 +59,7 @@ func main() {
 - **Health Checks**: Monitor service availability
 - **Error Handling**: Comprehensive error types with helper methods
 - **Type Safety**: Full type definitions for all API operations
+- **Per-Request Authentication**: Each request can have its own authentication token
 
 ## Configuration
 
@@ -63,10 +69,45 @@ func main() {
 client := sdk.NewClient(
     "http://localhost:8080",
     sdk.WithTimeout(60 * time.Second),
-    sdk.WithAuthToken("your-session-token"),
     sdk.WithUserAgent("my-app/1.0.0"),
 )
 ```
+
+### Per-Request Authentication
+
+**All authenticated endpoints require a token to be passed with each request:**
+
+```go
+// Single user scenario
+client := sdk.NewClient("http://localhost:8080")
+userToken := "user-session-token-123"
+
+resp, err := client.CustomizeCV(
+    ctx,
+    req,
+    sdk.WithRequestAuthToken(userToken),
+)
+```
+
+**Multi-user SaaS scenario:**
+
+```go
+// Single client instance serving multiple users
+client := sdk.NewClient("http://localhost:8080")
+
+// User 1's request
+resp1, err := client.CustomizeCV(
+    ctx,
+    req1,
+    sdk.WithRequestAuthToken(user1Token),
+)
+
+// User 2's request  
+resp2, err := client.CustomizeCV(
+    ctx,
+    req2,
+    sdk.WithRequestAuthToken(user2Token),
+)
 
 ### LLM Providers
 
@@ -97,18 +138,22 @@ llmConfig := &sdk.LLMConfig{
 ### CV Customization
 
 ```go
-// Customize a CV
-resp, err := client.CustomizeCV(ctx, &sdk.CustomizeCVRequest{
-    CV:             cvContent,
-    JobDescription: jobDesc,
-    AdditionalContext: []sdk.ContextItem{
-        {Type: "text", Content: "Additional skills..."},
+// Customize a CV (requires authentication)
+resp, err := client.CustomizeCV(
+    ctx,
+    &sdk.CustomizeCVRequest{
+        CV:             cvContent,
+        JobDescription: jobDesc,
+        AdditionalContext: []sdk.ContextItem{
+            {Type: "text", Content: "Additional skills..."},
+        },
+        LLMConfig: &sdk.LLMConfig{
+            Provider: sdk.ProviderOpenAI,
+            Model:    sdk.ModelGPT4,
+        },
     },
-    LLMConfig: &sdk.LLMConfig{
-        Provider: sdk.ProviderOpenAI,
-        Model:    sdk.ModelGPT4,
-    },
-})
+    sdk.WithRequestAuthToken(userToken),
+)
 ```
 
 ### Batch Processing
@@ -119,51 +164,92 @@ items := []sdk.BatchItem{
     {CV: cvContent, JobDescription: "Job 1"},
     {CV: cvContent, JobDescription: "Job 2"},
 }
-batchResp, err := client.BatchCustomize(ctx, items)
+batchResp, err := client.BatchCustomize(
+    ctx,
+    items,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Check status
-status, err := client.GetBatchStatus(ctx, batchResp.JobID)
+status, err := client.GetBatchStatus(
+    ctx,
+    batchResp.JobID,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Wait for completion (with polling)
-results, err := client.WaitForBatch(ctx, batchResp.JobID, 5*time.Second)
+results, err := client.WaitForBatch(
+    ctx,
+    batchResp.JobID,
+    5*time.Second,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Download results
-results, err := client.DownloadBatchResults(ctx, batchResp.JobID)
+results, err := client.DownloadBatchResults(
+    ctx,
+    batchResp.JobID,
+    sdk.WithRequestAuthToken(userToken),
+)
 ```
 
 ### Version Management
 
 ```go
 // List all versions for a CV
-versions, err := client.GetVersions(ctx, cvID)
+versions, err := client.GetVersions(
+    ctx,
+    cvID,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Get version details
-version, err := client.GetVersionDetail(ctx, versionID)
+version, err := client.GetVersionDetail(
+    ctx,
+    versionID,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Compare two versions
-comparison, err := client.CompareVersions(ctx, versionID1, versionID2)
+comparison, err := client.CompareVersions(
+    ctx,
+    versionID1,
+    versionID2,
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Download CV as PDF
-pdfData, err := client.DownloadCV(ctx, versionID)
+pdfData, err := client.DownloadCV(
+    ctx,
+    versionID,
+    sdk.WithRequestAuthToken(userToken),
+)
 ```
 
 ### Analytics
 
 ```go
 // Get user analytics
-analytics, err := client.GetAnalytics(ctx, 50) // limit to 50 snapshots
+analytics, err := client.GetAnalytics(
+    ctx,
+    50, // limit to 50 snapshots
+    sdk.WithRequestAuthToken(userToken),
+)
 
 // Get dashboard statistics
-dashboard, err := client.GetDashboard(ctx)
+dashboard, err := client.GetDashboard(
+    ctx,
+    sdk.WithRequestAuthToken(userToken),
+)
 ```
 
 ### Health Checks
 
 ```go
-// Full health check
+// Full health check (no auth required)
 health, err := client.Health(ctx)
 
-// Simple ping
+// Simple ping (no auth required)
 err := client.Ping(ctx)
 ```
 

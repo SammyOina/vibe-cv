@@ -18,7 +18,6 @@ import (
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
-	authToken  string
 	userAgent  string
 }
 
@@ -39,11 +38,29 @@ func WithTimeout(timeout time.Duration) ClientOption {
 	}
 }
 
-// WithAuthToken sets the authentication token for Kratos integration.
-func WithAuthToken(token string) ClientOption {
-	return func(c *Client) {
-		c.authToken = token
+// RequestOption is a functional option for configuring individual requests.
+type RequestOption func(*requestConfig)
+
+// requestConfig holds per-request configuration.
+type requestConfig struct {
+	authToken string
+}
+
+// WithRequestAuthToken sets the authentication token for a single request.
+// This is required for authenticated endpoints in multi-user SaaS scenarios.
+func WithRequestAuthToken(token string) RequestOption {
+	return func(rc *requestConfig) {
+		rc.authToken = token
 	}
+}
+
+// buildRequestConfig creates a requestConfig from the provided options.
+func buildRequestConfig(opts ...RequestOption) *requestConfig {
+	config := &requestConfig{}
+	for _, opt := range opts {
+		opt(config)
+	}
+	return config
 }
 
 // WithUserAgent sets a custom User-Agent header.
@@ -71,7 +88,8 @@ func NewClient(baseURL string, options ...ClientOption) *Client {
 }
 
 // doRequest performs an HTTP request with proper error handling.
-func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}) error {
+func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}, opts ...RequestOption) error {
+	reqConfig := buildRequestConfig(opts...)
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -94,8 +112,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.userAgent)
-	if c.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.authToken)
+	if reqConfig.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+reqConfig.authToken)
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -120,7 +138,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 }
 
 // doRequestRaw performs an HTTP request and returns the raw response body.
-func (c *Client) doRequestRaw(ctx context.Context, method, path string, body interface{}) ([]byte, error) {
+func (c *Client) doRequestRaw(ctx context.Context, method, path string, body interface{}, opts ...RequestOption) ([]byte, error) {
+	reqConfig := buildRequestConfig(opts...)
 	var reqBody io.Reader
 	if body != nil {
 		jsonData, err := json.Marshal(body)
@@ -145,8 +164,8 @@ func (c *Client) doRequestRaw(ctx context.Context, method, path string, body int
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("User-Agent", c.userAgent)
-	if c.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.authToken)
+	if reqConfig.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+reqConfig.authToken)
 	}
 
 	resp, err := c.httpClient.Do(req)
