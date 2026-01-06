@@ -382,6 +382,62 @@ The project uses a pluggable LLM architecture that supports:
 
 Configuration is flexible and can be set per-request or globally.
 
+## SDK
+
+A comprehensive Go SDK is available for programmatic access to the vibe-cv API.
+
+### Installation
+
+```bash
+go get github.com/sammyoina/vibe-cv/sdk
+```
+
+### Quick Start
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    
+    "github.com/sammyoina/vibe-cv/sdk"
+)
+
+func main() {
+    client := sdk.NewClient("http://localhost:8080")
+    
+    req := &sdk.CustomizeCVRequest{
+        CV:             "Your CV content...",
+        JobDescription: "Job description...",
+        LLMConfig: &sdk.LLMConfig{
+            Provider: sdk.ProviderOpenAI,
+            Model:    sdk.ModelGPT4,
+        },
+    }
+    
+    resp, err := client.CustomizeCV(context.Background(), req)
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    fmt.Printf("Match Score: %.2f\n", resp.MatchScore)
+}
+```
+
+### SDK Features
+
+- **CV Customization**: Customize CVs with various LLM providers
+- **Batch Processing**: Submit and track batch jobs with automatic polling
+- **Version Management**: List, compare, and download CV versions
+- **Analytics**: Track customization metrics
+- **Type Safety**: Full type definitions for all operations
+- **Error Handling**: Comprehensive error types
+
+See the [SDK documentation](./sdk/README.md) for complete API reference and examples.
+
+
 ## Development
 
 ### Running Tests
