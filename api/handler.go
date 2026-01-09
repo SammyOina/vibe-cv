@@ -21,30 +21,34 @@ import (
 
 // LatestHandler consolidates Phase 1-3 endpoints into /api/latest
 type LatestHandler struct {
-	provider     llm.Provider
-	repo         *db.Repository
-	queue        *batch.JobQueue
-	collector    *analytics.Collector
-	authConfig   *auth.Config
-	inputParser  *input.EnhancedParser
-	cvParser     *parser.CVParser
-	texGenerator *latex.LaTeXGenerator
-	outputDir    string
+	provider        llm.Provider
+	repo            *db.Repository
+	queue           *batch.JobQueue
+	collector       *analytics.Collector
+	authConfig      *auth.Config
+	inputParser     *input.EnhancedParser
+	cvParser        *parser.CVParser
+	texGenerator    *latex.LaTeXGenerator
+	outputDir       string
+	atsHandler      *ATSHandler
+	linkedinHandler *LinkedInHandler
 }
 
 // NewLatestHandler creates a new consolidated handler
 func NewLatestHandler(provider llm.Provider, repo *db.Repository, authConfig *auth.Config) *LatestHandler {
 	outputDir := "./outputs"
 	handler := &LatestHandler{
-		provider:     provider,
-		repo:         repo,
-		queue:        batch.NewJobQueue(repo, 4), // 4 workers
-		collector:    analytics.NewCollector(repo),
-		authConfig:   authConfig,
-		inputParser:  input.NewEnhancedParser(),
-		cvParser:     parser.NewCVParser(),
-		texGenerator: latex.NewLaTeXGenerator(outputDir, "pdflatex"),
-		outputDir:    outputDir,
+		provider:        provider,
+		repo:            repo,
+		queue:           batch.NewJobQueue(repo, 4), // 4 workers
+		collector:       analytics.NewCollector(repo),
+		authConfig:      authConfig,
+		inputParser:     input.NewEnhancedParser(),
+		cvParser:        parser.NewCVParser(),
+		texGenerator:    latex.NewLaTeXGenerator(outputDir, "pdflatex"),
+		outputDir:       outputDir,
+		atsHandler:      NewATSHandler(provider, repo),
+		linkedinHandler: NewLinkedInHandler(repo),
 	}
 	// Set the LLM provider on the batch queue
 	handler.queue.SetProvider(provider)
@@ -78,6 +82,15 @@ func (h *LatestHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/latest/batch/{job_id}/status", h.GetBatchStatus)
 	mux.HandleFunc("GET /api/latest/batch/{job_id}/download", h.DownloadBatch)
 	mux.HandleFunc("GET /api/latest/health", h.Health)
+
+	// ATS routes
+	mux.HandleFunc("POST /api/latest/ats/analyze", h.atsHandler.AnalyzeCV)
+	mux.HandleFunc("GET /api/latest/ats/{cv_version_id}", h.atsHandler.GetATSAnalysis)
+
+	// LinkedIn routes
+	mux.HandleFunc("POST /api/latest/linkedin/import", h.linkedinHandler.ImportLinkedIn)
+	mux.HandleFunc("GET /api/latest/linkedin/imports", h.linkedinHandler.GetLinkedInImports)
+	mux.HandleFunc("GET /api/latest/linkedin/{import_id}", h.linkedinHandler.GetLinkedInImport)
 }
 
 // CustomizeCV handles the main CV customization endpoint
@@ -133,9 +146,10 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Store version
+	// Store version with features tracking
 	resultJSON, _ := json.Marshal(result.Modifications)
-	_, err = h.repo.CreateCVVersion(cvRecord.ID, jobDesc, result.ModifiedCV, &result.MatchScore, (*json.RawMessage)(&resultJSON), nil)
+	featuresUsed := json.RawMessage(`{"ats_optimization":false,"linkedin_import":false,"premium_llm":true}`)
+	_, err = h.repo.CreateCVVersion(cvRecord.ID, jobDesc, result.ModifiedCV, &result.MatchScore, (*json.RawMessage)(&resultJSON), nil, &featuresUsed)
 	if err != nil {
 		fmt.Printf("Failed to store version: %v\n", err)
 	}

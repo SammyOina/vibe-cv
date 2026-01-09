@@ -134,6 +134,45 @@ func Migrations() *migrate.MemoryMigrationSource {
 					DROP INDEX IF EXISTS idx_cv_versions_cv_created;
 				`},
 			},
+			{
+				Id: "003_ats_linkedin_features",
+				Up: []string{`
+					-- ATS Analysis table
+					CREATE TABLE IF NOT EXISTS ats_analysis (
+						id SERIAL PRIMARY KEY,
+						cv_version_id INTEGER NOT NULL REFERENCES cv_versions(id) ON DELETE CASCADE,
+						overall_score DECIMAL(3,2),
+						keyword_matches JSONB,
+						formatting_issues JSONB,
+						section_completeness JSONB,
+						recommendations JSONB,
+						created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_ats_cv_version ON ats_analysis(cv_version_id);
+
+					-- LinkedIn Imports table
+					CREATE TABLE IF NOT EXISTS linkedin_imports (
+						id SERIAL PRIMARY KEY,
+						identity_id INTEGER REFERENCES identities(id) ON DELETE CASCADE,
+						linkedin_url TEXT NOT NULL,
+						raw_data JSONB,
+						extracted_cv TEXT,
+						import_status TEXT DEFAULT 'pending',
+						error_message TEXT,
+						created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+					);
+					CREATE INDEX IF NOT EXISTS idx_linkedin_identity ON linkedin_imports(identity_id);
+
+					-- Add features_used column to cv_versions
+					ALTER TABLE cv_versions ADD COLUMN IF NOT EXISTS features_used JSONB;
+				`},
+				Down: []string{`
+					ALTER TABLE cv_versions DROP COLUMN IF EXISTS features_used;
+					DROP TABLE IF EXISTS linkedin_imports;
+					DROP TABLE IF EXISTS ats_analysis;
+				`},
+			},
 		},
 	}
 }

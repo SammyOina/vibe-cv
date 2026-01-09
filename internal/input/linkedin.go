@@ -476,3 +476,23 @@ func isLikelyDegree(s string) bool {
 
 	return false
 }
+
+// ValidateLinkedInURL validates a LinkedIn profile URL.
+func ValidateLinkedInURL(url string) error {
+	if url == "" {
+		return nil // URL is optional
+	}
+
+	// Basic LinkedIn URL validation
+	if !strings.Contains(strings.ToLower(url), "linkedin.com") {
+		return errors.New("invalid LinkedIn URL: must contain 'linkedin.com'")
+	}
+
+	return nil
+}
+
+// ConvertToCV converts a LinkedIn profile to CV format.
+// This is a wrapper around the ToText() method for consistency with the API.
+func ConvertToCV(profile *LinkedInProfile) string {
+	return profile.ToText()
+}

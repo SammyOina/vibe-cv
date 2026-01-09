@@ -36,6 +36,7 @@ type CVVersion struct {
 	MatchScore      *float64         `json:"match_score"`
 	AgentMetrics    *json.RawMessage `json:"agent_metrics"`
 	WorkflowHistory *json.RawMessage `json:"workflow_history"`
+	FeaturesUsed    *json.RawMessage `json:"features_used"`
 	CreatedAt       time.Time        `json:"created_at"`
 }
 
@@ -72,6 +73,31 @@ type AnalyticsSnapshot struct {
 	KeywordCoverage *float64         `json:"keyword_coverage"`
 	Timestamp       time.Time        `json:"timestamp"`
 	Metadata        *json.RawMessage `json:"metadata"`
+}
+
+// ATSAnalysis represents an ATS compatibility analysis result.
+type ATSAnalysis struct {
+	ID                  int              `json:"id"`
+	CVVersionID         int              `json:"cv_version_id"`
+	OverallScore        *float64         `json:"overall_score"`
+	KeywordMatches      *json.RawMessage `json:"keyword_matches"`
+	FormattingIssues    *json.RawMessage `json:"formatting_issues"`
+	SectionCompleteness *json.RawMessage `json:"section_completeness"`
+	Recommendations     *json.RawMessage `json:"recommendations"`
+	CreatedAt           time.Time        `json:"created_at"`
+}
+
+// LinkedInImport represents a LinkedIn profile import.
+type LinkedInImport struct {
+	ID           int              `json:"id"`
+	IdentityID   *int             `json:"identity_id"`
+	LinkedInURL  string           `json:"linkedin_url"`
+	RawData      *json.RawMessage `json:"raw_data"`
+	ExtractedCV  *string          `json:"extracted_cv"`
+	ImportStatus string           `json:"import_status"` // pending, processing, completed, failed
+	ErrorMessage *string          `json:"error_message"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
 // Repository defines database operations.
@@ -126,12 +152,12 @@ func (r *Repository) GetCV(id int) (*CV, error) {
 }
 
 // CreateCVVersion creates a new CV version.
-func (r *Repository) CreateCVVersion(cvID int, jobDescription string, customizedCV string, matchScore *float64, agentMetrics *json.RawMessage, workflowHistory *json.RawMessage) (*CVVersion, error) {
+func (r *Repository) CreateCVVersion(cvID int, jobDescription string, customizedCV string, matchScore *float64, agentMetrics *json.RawMessage, workflowHistory *json.RawMessage, featuresUsed *json.RawMessage) (*CVVersion, error) {
 	var id int
 
 	err := r.db.QueryRow(
-		"INSERT INTO cv_versions (cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-		cvID, jobDescription, customizedCV, matchScore, agentMetrics, workflowHistory,
+		"INSERT INTO cv_versions (cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json, features_used) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+		cvID, jobDescription, customizedCV, matchScore, agentMetrics, workflowHistory, featuresUsed,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -145,6 +171,7 @@ func (r *Repository) CreateCVVersion(cvID int, jobDescription string, customized
 		MatchScore:      matchScore,
 		AgentMetrics:    agentMetrics,
 		WorkflowHistory: workflowHistory,
+		FeaturesUsed:    featuresUsed,
 		CreatedAt:       time.Now(),
 	}, nil
 }
@@ -152,7 +179,7 @@ func (r *Repository) CreateCVVersion(cvID int, jobDescription string, customized
 // GetCVVersions retrieves all versions for a CV.
 func (r *Repository) GetCVVersions(cvID int) ([]*CVVersion, error) {
 	rows, err := r.db.Query(
-		"SELECT id, cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json, created_at FROM cv_versions WHERE cv_id = $1 ORDER BY created_at DESC",
+		"SELECT id, cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json, features_used, created_at FROM cv_versions WHERE cv_id = $1 ORDER BY created_at DESC",
 		cvID,
 	)
 	if err != nil {
@@ -164,7 +191,7 @@ func (r *Repository) GetCVVersions(cvID int) ([]*CVVersion, error) {
 
 	for rows.Next() {
 		var v CVVersion
-		if err := rows.Scan(&v.ID, &v.CVID, &v.JobDescription, &v.CustomizedCV, &v.MatchScore, &v.AgentMetrics, &v.WorkflowHistory, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.CVID, &v.JobDescription, &v.CustomizedCV, &v.MatchScore, &v.AgentMetrics, &v.WorkflowHistory, &v.FeaturesUsed, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 
@@ -179,9 +206,9 @@ func (r *Repository) GetCVVersion(id int) (*CVVersion, error) {
 	var v CVVersion
 
 	err := r.db.QueryRow(
-		"SELECT id, cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json, created_at FROM cv_versions WHERE id = $1",
+		"SELECT id, cv_id, job_description, customized_cv, match_score, agent_metrics_json, workflow_history_json, features_used, created_at FROM cv_versions WHERE id = $1",
 		id,
-	).Scan(&v.ID, &v.CVID, &v.JobDescription, &v.CustomizedCV, &v.MatchScore, &v.AgentMetrics, &v.WorkflowHistory, &v.CreatedAt)
+	).Scan(&v.ID, &v.CVID, &v.JobDescription, &v.CustomizedCV, &v.MatchScore, &v.AgentMetrics, &v.WorkflowHistory, &v.FeaturesUsed, &v.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
