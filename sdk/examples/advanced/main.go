@@ -38,7 +38,7 @@ func main() {
 	if err := client.Ping(ctx); err != nil {
 		log.Fatalf("Service is not healthy: %v", err)
 	}
-	fmt.Println("✅ Service is healthy\n")
+	fmt.Println("✅ Service is healthy")
 
 	// 2. Customize CV with different LLM providers
 	fmt.Println("=== CV Customization with Different LLMs ===")
