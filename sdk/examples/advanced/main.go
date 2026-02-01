@@ -149,5 +149,6 @@ func main() {
 		fmt.Printf("Active Users: %d\n", dashboard.ActiveUsers)
 	}
 
-	fmt.Println("\n✅ Advanced features demonstration complete!")
+	fmt.Println()
+	fmt.Println("✅ Advanced features demonstration complete!")
 }
