@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package api
 
 import (
@@ -19,7 +22,7 @@ import (
 	"github.com/sammyoina/vibe-cv/pkg/auth"
 )
 
-// LatestHandler consolidates Phase 1-3 endpoints into /api/latest
+// LatestHandler consolidates Phase 1-3 endpoints into /api/latest.
 type LatestHandler struct {
 	provider        llm.Provider
 	repo            *db.Repository
@@ -34,7 +37,7 @@ type LatestHandler struct {
 	linkedinHandler *LinkedInHandler
 }
 
-// NewLatestHandler creates a new consolidated handler
+// NewLatestHandler creates a new consolidated handler.
 func NewLatestHandler(provider llm.Provider, repo *db.Repository, authConfig *auth.Config) *LatestHandler {
 	outputDir := "./outputs"
 	handler := &LatestHandler{
@@ -52,24 +55,25 @@ func NewLatestHandler(provider llm.Provider, repo *db.Repository, authConfig *au
 	}
 	// Set the LLM provider on the batch queue
 	handler.queue.SetProvider(provider)
+
 	return handler
 }
 
-// StartQueue starts the batch job queue workers
+// StartQueue starts the batch job queue workers.
 func (h *LatestHandler) StartQueue() {
 	if h.queue != nil {
 		h.queue.Start()
 	}
 }
 
-// StopQueue stops the batch job queue workers
+// StopQueue stops the batch job queue workers.
 func (h *LatestHandler) StopQueue() {
 	if h.queue != nil {
 		h.queue.Stop()
 	}
 }
 
-// RegisterRoutes registers all latest API routes
+// RegisterRoutes registers all latest API routes.
 func (h *LatestHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/latest/customize-cv", h.CustomizeCV)
 	mux.HandleFunc("POST /api/latest/batch-customize", h.BatchCustomize)
@@ -93,13 +97,14 @@ func (h *LatestHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/latest/linkedin/{import_id}", h.linkedinHandler.GetLinkedInImport)
 }
 
-// CustomizeCV handles the main CV customization endpoint
+// CustomizeCV handles the main CV customization endpoint.
 func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req types.CustomizeCVRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -125,6 +130,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	cvRecord, err := h.repo.CreateCV(identityID, cvText)
 	if err != nil {
 		http.Error(w, `{"error": "failed to store CV"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -143,6 +149,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	result, err := h.provider.Customize(r.Context(), cvText, jobDesc, contextStrings)
 	if err != nil {
 		http.Error(w, `{"error": "customization failed"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -179,22 +186,26 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(customizeResp)
+	if err := json.NewEncoder(w).Encode(customizeResp); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// BatchCustomize handles batch CV customization
+// BatchCustomize handles batch CV customization.
 func (h *LatestHandler) BatchCustomize(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var batchReq map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&batchReq); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+
 		return
 	}
 
 	items, ok := batchReq["items"].([]interface{})
 	if !ok || len(items) == 0 {
 		http.Error(w, `{"error": "items required"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -223,6 +234,7 @@ func (h *LatestHandler) BatchCustomize(w http.ResponseWriter, r *http.Request) {
 	jobID, err := h.queue.CreateJob(identityID, len(items))
 	if err != nil {
 		http.Error(w, `{"error": "failed to create batch job"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -232,10 +244,12 @@ func (h *LatestHandler) BatchCustomize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetVersions retrieves all versions for a CV
+// GetVersions retrieves all versions for a CV.
 func (h *LatestHandler) GetVersions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -243,20 +257,24 @@ func (h *LatestHandler) GetVersions(w http.ResponseWriter, r *http.Request) {
 	cvID, err := strconv.Atoi(cvIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid cv_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
 	versions, err := h.repo.GetCVVersions(cvID)
 	if err != nil {
 		http.Error(w, `{"error": "failed to retrieve versions"}`, http.StatusInternalServerError)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(versions)
+	if err := json.NewEncoder(w).Encode(versions); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetVersionDetail retrieves a specific version with full details
+// GetVersionDetail retrieves a specific version with full details.
 func (h *LatestHandler) GetVersionDetail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -264,26 +282,31 @@ func (h *LatestHandler) GetVersionDetail(w http.ResponseWriter, r *http.Request)
 	versionID, err := strconv.Atoi(versionIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid version_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
 	version, err := h.repo.GetCVVersion(versionID)
 	if err != nil {
 		http.Error(w, `{"error": "version not found"}`, http.StatusNotFound)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(version)
+	if err := json.NewEncoder(w).Encode(version); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// CompareVersions compares two CV versions
+// CompareVersions compares two CV versions.
 func (h *LatestHandler) CompareVersions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var compareReq map[string]int
 	if err := json.NewDecoder(r.Body).Decode(&compareReq); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -293,12 +316,14 @@ func (h *LatestHandler) CompareVersions(w http.ResponseWriter, r *http.Request) 
 	v1, err := h.repo.GetCVVersion(version1ID)
 	if err != nil {
 		http.Error(w, `{"error": "version 1 not found"}`, http.StatusNotFound)
+
 		return
 	}
 
 	v2, err := h.repo.GetCVVersion(version2ID)
 	if err != nil {
 		http.Error(w, `{"error": "version 2 not found"}`, http.StatusNotFound)
+
 		return
 	}
 
@@ -315,10 +340,12 @@ func (h *LatestHandler) CompareVersions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(comparison)
+	if err := json.NewEncoder(w).Encode(comparison); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetAnalytics retrieves analytics for the current user
+// GetAnalytics retrieves analytics for the current user.
 func (h *LatestHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -334,28 +361,34 @@ func (h *LatestHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	analytics, err := h.collector.GetAnalytics(identityID, limit)
 	if err != nil {
 		http.Error(w, `{"error": "failed to retrieve analytics"}`, http.StatusInternalServerError)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(analytics)
+	if err := json.NewEncoder(w).Encode(analytics); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetDashboard retrieves global dashboard statistics
+// GetDashboard retrieves global dashboard statistics.
 func (h *LatestHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	dashboard, err := h.collector.GetDashboard()
 	if err != nil {
 		http.Error(w, `{"error": "failed to retrieve dashboard"}`, http.StatusInternalServerError)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(dashboard)
+	if err := json.NewEncoder(w).Encode(dashboard); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetBatchStatus retrieves the status of a batch job
+// GetBatchStatus retrieves the status of a batch job.
 func (h *LatestHandler) GetBatchStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -363,20 +396,24 @@ func (h *LatestHandler) GetBatchStatus(w http.ResponseWriter, r *http.Request) {
 	jobID, err := strconv.Atoi(jobIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid job_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
 	jobStatus, err := h.queue.GetBatchJobStatus(jobID)
 	if err != nil {
 		http.Error(w, `{"error": "job not found"}`, http.StatusNotFound)
+
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(jobStatus)
+	if err := json.NewEncoder(w).Encode(jobStatus); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// DownloadBatch downloads results for a batch job
+// DownloadBatch downloads results for a batch job.
 func (h *LatestHandler) DownloadBatch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -384,6 +421,7 @@ func (h *LatestHandler) DownloadBatch(w http.ResponseWriter, r *http.Request) {
 	jobID, err := strconv.Atoi(jobIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid job_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -391,12 +429,14 @@ func (h *LatestHandler) DownloadBatch(w http.ResponseWriter, r *http.Request) {
 	job, err := h.repo.GetBatchJob(jobID)
 	if err != nil {
 		http.Error(w, `{"error": "job not found"}`, http.StatusInternalServerError)
+
 		return
 	}
 
 	items, err := h.repo.GetBatchJobItems(jobID)
 	if err != nil {
 		http.Error(w, `{"error": "failed to retrieve batch items"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -408,15 +448,18 @@ func (h *LatestHandler) DownloadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// DownloadCV retrieves a customized CV version from the database and serves it as a PDF
+// DownloadCV retrieves a customized CV version from the database and serves it as a PDF.
 func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	versionIDStr := r.PathValue("version_id")
 	versionID, err := strconv.Atoi(versionIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid version_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -424,6 +467,7 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	version, err := h.repo.GetCVVersion(versionID)
 	if err != nil {
 		http.Error(w, `{"error": "version not found"}`, http.StatusNotFound)
+
 		return
 	}
 
@@ -437,9 +481,10 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			w.Header().Set("Content-Type", "application/pdf")
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"cv-version-%d.pdf\"", versionID))
-			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfContent)))
+			w.Header().Set("Content-Length", strconv.Itoa(len(pdfContent)))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(pdfContent)
+
 			return
 		}
 	}
@@ -449,12 +494,12 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	cvContent := []byte(version.CustomizedCV)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"cv-version-%d.txt\"", versionID))
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(cvContent)))
+	w.Header().Set("Content-Length", strconv.Itoa(len(cvContent)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(cvContent)
 }
 
-// Health checks the health of the service
+// Health checks the health of the service.
 func (h *LatestHandler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -467,5 +512,7 @@ func (h *LatestHandler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }

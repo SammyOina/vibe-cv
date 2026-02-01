@@ -258,11 +258,11 @@ func (a *Analyzer) GenerateRecommendations(result *ATSAnalysisResult) []Recommen
 
 	// Keyword recommendations
 	if len(result.KeywordMatches.Missing) > 0 {
-		missingList := strings.Join(result.KeywordMatches.Missing[:min(5, len(result.KeywordMatches.Missing))], ", ")
+		missingList := strings.Join(result.KeywordMatches.Missing[:minInt(5, len(result.KeywordMatches.Missing))], ", ")
 		recommendations = append(recommendations, Recommendation{
 			Category:   "keywords",
 			Priority:   "high",
-			Suggestion: fmt.Sprintf("Add these missing keywords to improve ATS match: %s", missingList),
+			Suggestion: "Add these missing keywords to improve ATS match: " + missingList,
 		})
 	}
 
@@ -366,18 +366,20 @@ func getMatchedKeywordsList(matched map[string]bool) []string {
 			list = append(list, kw)
 		}
 	}
+
 	return list
 }
 
 func extractSection(content, sectionName string) string {
 	lines := strings.Split(content, "\n")
 	inSection := false
-	sectionContent := ""
 
+	var sb strings.Builder
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
 		if strings.Contains(lineLower, strings.ToLower(sectionName)) {
 			inSection = true
+
 			continue
 		}
 
@@ -387,17 +389,19 @@ func extractSection(content, sectionName string) string {
 		}
 
 		if inSection {
-			sectionContent += line + "\n"
+			sb.WriteString(line)
+			sb.WriteByte('\n')
 		}
 	}
 
-	return sectionContent
+	return sb.String()
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 

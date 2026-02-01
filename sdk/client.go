@@ -60,6 +60,7 @@ func buildRequestConfig(opts ...RequestOption) *requestConfig {
 	for _, opt := range opts {
 		opt(config)
 	}
+
 	return config
 }
 

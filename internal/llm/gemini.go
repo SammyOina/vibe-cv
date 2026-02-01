@@ -37,7 +37,7 @@ func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription strin
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
 	// Create request content
-	var contents []*genai.Content
+	contents := make([]*genai.Content, 0, 2)
 
 	// Add system instruction as first message
 	contents = append(contents, &genai.Content{

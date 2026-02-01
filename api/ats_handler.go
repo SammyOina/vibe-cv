@@ -34,13 +34,14 @@ type AnalyzeRequest struct {
 	JobDescription string `json:"job_description"`
 }
 
-// AnalyzeCV handles POST /api/latest/ats/analyze
+// AnalyzeCV handles POST /api/latest/ats/analyze.
 func (h *ATSHandler) AnalyzeCV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req AnalyzeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -48,6 +49,7 @@ func (h *ATSHandler) AnalyzeCV(w http.ResponseWriter, r *http.Request) {
 	version, err := h.repo.GetCVVersion(req.CVVersionID)
 	if err != nil {
 		http.Error(w, `{"error": "CV version not found"}`, http.StatusNotFound)
+
 		return
 	}
 
@@ -56,6 +58,7 @@ func (h *ATSHandler) AnalyzeCV(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("ATS analysis failed: %v\n", err)
 		http.Error(w, `{"error": "analysis failed"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -91,10 +94,12 @@ func (h *ATSHandler) AnalyzeCV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
-// GetATSAnalysis handles GET /api/latest/ats/{cv_version_id}
+// GetATSAnalysis handles GET /api/latest/ats/{cv_version_id}.
 func (h *ATSHandler) GetATSAnalysis(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -102,6 +107,7 @@ func (h *ATSHandler) GetATSAnalysis(w http.ResponseWriter, r *http.Request) {
 	cvVersionID, err := strconv.Atoi(cvVersionIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid cv_version_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -109,6 +115,7 @@ func (h *ATSHandler) GetATSAnalysis(w http.ResponseWriter, r *http.Request) {
 	analysis, err := h.repo.GetATSAnalysis(cvVersionID)
 	if err != nil {
 		http.Error(w, `{"error": "analysis not found"}`, http.StatusNotFound)
+
 		return
 	}
 
@@ -119,16 +126,16 @@ func (h *ATSHandler) GetATSAnalysis(w http.ResponseWriter, r *http.Request) {
 	var recommendations []ats.Recommendation
 
 	if analysis.KeywordMatches != nil {
-		json.Unmarshal(*analysis.KeywordMatches, &keywordMatches)
+		_ = json.Unmarshal(*analysis.KeywordMatches, &keywordMatches)
 	}
 	if analysis.FormattingIssues != nil {
-		json.Unmarshal(*analysis.FormattingIssues, &formattingIssues)
+		_ = json.Unmarshal(*analysis.FormattingIssues, &formattingIssues)
 	}
 	if analysis.SectionCompleteness != nil {
-		json.Unmarshal(*analysis.SectionCompleteness, &sectionCompleteness)
+		_ = json.Unmarshal(*analysis.SectionCompleteness, &sectionCompleteness)
 	}
 	if analysis.Recommendations != nil {
-		json.Unmarshal(*analysis.Recommendations, &recommendations)
+		_ = json.Unmarshal(*analysis.Recommendations, &recommendations)
 	}
 
 	response := map[string]interface{}{
@@ -143,5 +150,7 @@ func (h *ATSHandler) GetATSAnalysis(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
