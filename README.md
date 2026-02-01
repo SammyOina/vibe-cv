@@ -128,7 +128,11 @@ KRATOS_ADMIN_URL=http://localhost:4434        # Kratos admin API URL
 
 ### Docker Setup
 
-The project includes Docker Compose configuration for easy deployment with PostgreSQL and Ory Kratos authentication:
+The project includes Docker Compose configuration for easy deployment with PostgreSQL and Ory Kratos authentication.
+
+#### Using Pre-built Images from GHCR
+
+Docker images are automatically published to GitHub Container Registry on every merge to the main branch:
 
 ```bash
 cd docker
@@ -136,10 +140,47 @@ cp .env.example .env  # Configure your environment variables
 docker-compose up -d
 ```
 
-This will start:
+This will pull the latest image from `ghcr.io/sammyoina/vibe-cv:latest` and start:
 - PostgreSQL database
 - Ory Kratos identity server
 - vibe-cv application server
+
+**Note**: If the repository is private, you'll need to authenticate with GHCR first:
+
+```bash
+# Create a Personal Access Token (PAT) with read:packages scope at https://github.com/settings/tokens
+# Replace YOUR_GITHUB_USERNAME with your actual GitHub username
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+#### Building Locally
+
+If you need to build the Docker image locally:
+
+```bash
+make docker-build
+```
+
+Or manually:
+
+```bash
+docker build -f docker/Dockerfile -t ghcr.io/sammyoina/vibe-cv:local .
+```
+
+#### Makefile Commands
+
+The project includes a Makefile with useful commands:
+
+```bash
+make help          # Show all available commands
+make build         # Build the Go application
+make test          # Run tests
+make lint          # Run linters
+make docker-build  # Build Docker image locally
+make docker-run    # Start Docker Compose services
+make docker-stop   # Stop Docker Compose services
+make clean         # Clean build artifacts
+```
 
 ### Usage
 
