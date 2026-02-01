@@ -38,7 +38,7 @@ func main() {
 	if err := client.Ping(ctx); err != nil {
 		log.Fatalf("Service is not healthy: %v", err)
 	}
-	fmt.Println("✅ Service is healthy\n")
+	fmt.Println("✅ Service is healthy")
 
 	// 2. Customize CV with different LLM providers
 	fmt.Println("=== CV Customization with Different LLMs ===")
@@ -112,7 +112,7 @@ func main() {
 		fmt.Printf("Could not download CV: %v\n", err)
 	} else {
 		filename := fmt.Sprintf("cv-version-%d.pdf", versionID)
-		if err := os.WriteFile(filename, pdfData, 0644); err != nil {
+		if err := os.WriteFile(filename, pdfData, 0o644); err != nil {
 			fmt.Printf("Could not save PDF: %v\n", err)
 		} else {
 			fmt.Printf("✅ Downloaded CV to %s (%d bytes)\n", filename, len(pdfData))
