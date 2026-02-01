@@ -262,7 +262,7 @@ func (a *Analyzer) GenerateRecommendations(result *ATSAnalysisResult) []Recommen
 		recommendations = append(recommendations, Recommendation{
 			Category:   "keywords",
 			Priority:   "high",
-			Suggestion: fmt.Sprintf("Add these missing keywords to improve ATS match: %s", missingList),
+			Suggestion: "Add these missing keywords to improve ATS match: " + missingList,
 		})
 	}
 
@@ -366,6 +366,7 @@ func getMatchedKeywordsList(matched map[string]bool) []string {
 			list = append(list, kw)
 		}
 	}
+
 	return list
 }
 
@@ -374,10 +375,12 @@ func extractSection(content, sectionName string) string {
 	inSection := false
 	sectionContent := ""
 
+	var sectionContentSb377 strings.Builder
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
 		if strings.Contains(lineLower, strings.ToLower(sectionName)) {
 			inSection = true
+
 			continue
 		}
 
@@ -387,9 +390,10 @@ func extractSection(content, sectionName string) string {
 		}
 
 		if inSection {
-			sectionContent += line + "\n"
+			sectionContentSb377.WriteString(line + "\n")
 		}
 	}
+	sectionContent += sectionContentSb377.String()
 
 	return sectionContent
 }
@@ -398,6 +402,7 @@ func min(a, b int) int {
 	if a < b {
 		return a
 	}
+
 	return b
 }
 

@@ -443,6 +443,7 @@ func (r *Repository) GetOrCreateIdentity(kratosID string, email string) (*Identi
 				identity.Email = &email
 			}
 		}
+
 		return identity, nil
 	}
 

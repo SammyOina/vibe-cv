@@ -34,19 +34,21 @@ type ImportRequest struct {
 	ProfileText string `json:"profile_text"`
 }
 
-// ImportLinkedIn handles POST /api/latest/linkedin/import
+// ImportLinkedIn handles POST /api/latest/linkedin/import.
 func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req ImportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+
 		return
 	}
 
 	// Validate LinkedIn URL if provided
 	if err := input.ValidateLinkedInURL(req.LinkedInURL); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error": "%s"}`, err.Error()), http.StatusBadRequest)
+
 		return
 	}
 
@@ -67,6 +69,7 @@ func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request)
 	linkedinImport, err := h.repo.CreateLinkedInImport(identityID, req.LinkedInURL)
 	if err != nil {
 		http.Error(w, `{"error": "failed to create import"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -77,6 +80,7 @@ func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request)
 		errorMsg := err.Error()
 		h.repo.UpdateLinkedInImport(linkedinImport.ID, "failed", nil, nil, &errorMsg)
 		http.Error(w, fmt.Sprintf(`{"error": "failed to parse profile: %s"}`, err.Error()), http.StatusBadRequest)
+
 		return
 	}
 
@@ -116,7 +120,7 @@ func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(response)
 }
 
-// GetLinkedInImports handles GET /api/latest/linkedin/imports
+// GetLinkedInImports handles GET /api/latest/linkedin/imports.
 func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -127,6 +131,7 @@ func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Requ
 			identity, err := h.repo.GetOrCreateIdentity(user.KratosID, user.Email)
 			if err != nil {
 				http.Error(w, `{"error": "authentication required"}`, http.StatusUnauthorized)
+
 				return
 			}
 			identityID = &identity.ID
@@ -135,6 +140,7 @@ func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Requ
 
 	if identityID == nil {
 		http.Error(w, `{"error": "authentication required"}`, http.StatusUnauthorized)
+
 		return
 	}
 
@@ -142,6 +148,7 @@ func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Requ
 	imports, err := h.repo.GetLinkedInImports(*identityID)
 	if err != nil {
 		http.Error(w, `{"error": "failed to retrieve imports"}`, http.StatusInternalServerError)
+
 		return
 	}
 
@@ -149,7 +156,7 @@ func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(imports)
 }
 
-// GetLinkedInImport handles GET /api/latest/linkedin/{import_id}
+// GetLinkedInImport handles GET /api/latest/linkedin/{import_id}.
 func (h *LinkedInHandler) GetLinkedInImport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -157,6 +164,7 @@ func (h *LinkedInHandler) GetLinkedInImport(w http.ResponseWriter, r *http.Reque
 	importID, err := strconv.Atoi(importIDStr)
 	if err != nil {
 		http.Error(w, `{"error": "invalid import_id"}`, http.StatusBadRequest)
+
 		return
 	}
 
@@ -164,6 +172,7 @@ func (h *LinkedInHandler) GetLinkedInImport(w http.ResponseWriter, r *http.Reque
 	linkedinImport, err := h.repo.GetLinkedInImport(importID)
 	if err != nil {
 		http.Error(w, `{"error": "import not found"}`, http.StatusNotFound)
+
 		return
 	}
 

@@ -22,6 +22,7 @@ func (e *APIError) Error() string {
 	if e.Message != "" {
 		return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.Message)
 	}
+
 	return fmt.Sprintf("API error (status %d)", e.StatusCode)
 }
 
@@ -99,11 +100,13 @@ func parseAPIError(resp *http.Response) error {
 // IsAPIError returns true if the error is an APIError.
 func IsAPIError(err error) bool {
 	_, ok := err.(*APIError)
+
 	return ok
 }
 
 // IsValidationError returns true if the error is a ValidationError.
 func IsValidationError(err error) bool {
 	_, ok := err.(*ValidationError)
+
 	return ok
 }
