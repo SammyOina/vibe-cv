@@ -76,6 +76,8 @@ services:
       retries: 5
 
   vibe-cv:
+    # For production, consider using a specific version tag instead of latest
+    # Example: ghcr.io/sammyoina/vibe-cv:main-abc123 (SHA-based tag)
     image: ghcr.io/sammyoina/vibe-cv:latest
     container_name: vibe-cv-app
     depends_on:

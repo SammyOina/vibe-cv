@@ -149,7 +149,8 @@ This will pull the latest image from `ghcr.io/sammyoina/vibe-cv:latest` and star
 
 ```bash
 # Create a Personal Access Token (PAT) with read:packages scope at https://github.com/settings/tokens
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+# Replace YOUR_GITHUB_USERNAME with your actual GitHub username
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
 #### Building Locally
