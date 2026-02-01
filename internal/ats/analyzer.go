@@ -373,9 +373,8 @@ func getMatchedKeywordsList(matched map[string]bool) []string {
 func extractSection(content, sectionName string) string {
 	lines := strings.Split(content, "\n")
 	inSection := false
-	sectionContent := ""
 
-	var sectionContentSb377 strings.Builder
+	var sb strings.Builder
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
 		if strings.Contains(lineLower, strings.ToLower(sectionName)) {
@@ -390,12 +389,12 @@ func extractSection(content, sectionName string) string {
 		}
 
 		if inSection {
-			sectionContentSb377.WriteString(line + "\n")
+			sb.WriteString(line)
+			sb.WriteByte('\n')
 		}
 	}
-	sectionContent += sectionContentSb377.String()
 
-	return sectionContent
+	return sb.String()
 }
 
 func minInt(a, b int) int {
