@@ -258,7 +258,7 @@ func (a *Analyzer) GenerateRecommendations(result *ATSAnalysisResult) []Recommen
 
 	// Keyword recommendations
 	if len(result.KeywordMatches.Missing) > 0 {
-		missingList := strings.Join(result.KeywordMatches.Missing[:min(5, len(result.KeywordMatches.Missing))], ", ")
+		missingList := strings.Join(result.KeywordMatches.Missing[:minInt(5, len(result.KeywordMatches.Missing))], ", ")
 		recommendations = append(recommendations, Recommendation{
 			Category:   "keywords",
 			Priority:   "high",
@@ -398,7 +398,7 @@ func extractSection(content, sectionName string) string {
 	return sectionContent
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}

@@ -259,7 +259,8 @@ func (r *Repository) GetBatchJob(id int) (*BatchJob, error) {
 // UpdateBatchJobStatus updates batch job status.
 func (r *Repository) UpdateBatchJobStatus(id int, status string, completedItems int) error {
 	query := "UPDATE batch_jobs SET status = $1, completed_items = $2, updated_at = CURRENT_TIMESTAMP"
-	args := []any{status, completedItems}
+	args := make([]any, 0, 3)
+	args = append(args, status, completedItems)
 
 	if status == "completed" || status == "failed" {
 		query += ", completed_at = CURRENT_TIMESTAMP"

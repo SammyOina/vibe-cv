@@ -153,7 +153,7 @@ func TestHealthCheck(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","version":"test","database":"connected","timestamp":"2024-01-01T00:00:00Z"}`))
+		_, _ = w.Write([]byte(`{"status":"ok","version":"test","database":"connected","timestamp":"2024-01-01T00:00:00Z"}`))
 	}))
 	defer server.Close()
 

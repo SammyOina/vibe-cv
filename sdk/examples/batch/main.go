@@ -101,7 +101,8 @@ SKILLS:
 	fmt.Printf("Completed at: %s\n\n", results.CreatedAt.Format(time.RFC3339))
 
 	fmt.Println("Results:")
-	for i, item := range results.Items {
+	for i := range results.Items {
+		item := &results.Items[i]
 		fmt.Printf("\n%d. %s\n", i+1, jobs[i].company)
 		fmt.Printf("   Status: %s\n", item.Status)
 		if item.ErrorMessage != nil {

@@ -78,7 +78,7 @@ func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		// Update import with error
 		errorMsg := err.Error()
-		h.repo.UpdateLinkedInImport(linkedinImport.ID, "failed", nil, nil, &errorMsg)
+		_ = h.repo.UpdateLinkedInImport(linkedinImport.ID, "failed", nil, nil, &errorMsg)
 		http.Error(w, fmt.Sprintf(`{"error": "failed to parse profile: %s"}`, err.Error()), http.StatusBadRequest)
 
 		return
@@ -117,7 +117,9 @@ func (h *LinkedInHandler) ImportLinkedIn(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetLinkedInImports handles GET /api/latest/linkedin/imports.
@@ -153,7 +155,9 @@ func (h *LinkedInHandler) GetLinkedInImports(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(imports)
+	if err := json.NewEncoder(w).Encode(imports); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetLinkedInImport handles GET /api/latest/linkedin/{import_id}.
@@ -177,5 +181,7 @@ func (h *LinkedInHandler) GetLinkedInImport(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(linkedinImport)
+	if err := json.NewEncoder(w).Encode(linkedinImport); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }

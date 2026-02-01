@@ -186,7 +186,9 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(customizeResp)
+	if err := json.NewEncoder(w).Encode(customizeResp); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // BatchCustomize handles batch CV customization.
@@ -242,7 +244,9 @@ func (h *LatestHandler) BatchCustomize(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetVersions retrieves all versions for a CV.
@@ -265,7 +269,9 @@ func (h *LatestHandler) GetVersions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(versions)
+	if err := json.NewEncoder(w).Encode(versions); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetVersionDetail retrieves a specific version with full details.
@@ -288,7 +294,9 @@ func (h *LatestHandler) GetVersionDetail(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(version)
+	if err := json.NewEncoder(w).Encode(version); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // CompareVersions compares two CV versions.
@@ -332,7 +340,9 @@ func (h *LatestHandler) CompareVersions(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(comparison)
+	if err := json.NewEncoder(w).Encode(comparison); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetAnalytics retrieves analytics for the current user.
@@ -356,7 +366,9 @@ func (h *LatestHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(analytics)
+	if err := json.NewEncoder(w).Encode(analytics); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetDashboard retrieves global dashboard statistics.
@@ -371,7 +383,9 @@ func (h *LatestHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(dashboard)
+	if err := json.NewEncoder(w).Encode(dashboard); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // GetBatchStatus retrieves the status of a batch job.
@@ -394,7 +408,9 @@ func (h *LatestHandler) GetBatchStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(jobStatus)
+	if err := json.NewEncoder(w).Encode(jobStatus); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // DownloadBatch downloads results for a batch job.
@@ -432,7 +448,9 @@ func (h *LatestHandler) DownloadBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
 
 // DownloadCV retrieves a customized CV version from the database and serves it as a PDF.
@@ -494,5 +512,7 @@ func (h *LatestHandler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+	}
 }
