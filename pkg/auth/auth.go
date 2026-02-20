@@ -85,10 +85,11 @@ func Middleware(config *Config) func(http.Handler) http.Handler {
 
 // extractSessionToken extracts session token from cookie or Authorization header.
 func extractSessionToken(r *http.Request, cookieName string) (string, error) {
-	// Try cookie first
-	cookie, err := r.Cookie(cookieName)
-	if err == nil && cookie.Value != "" {
-		return cookie.Value, nil
+	// Try cookies with prefix matching
+	for _, cookie := range r.Cookies() {
+		if strings.HasPrefix(cookie.Name, cookieName) && cookie.Value != "" {
+			return cookie.Value, nil
+		}
 	}
 
 	// Try Authorization header (Bearer token)
