@@ -67,7 +67,8 @@ func Middleware(config *Config) func(http.Handler) http.Handler {
 			}
 
 			// Validate session with Kratos
-			user, err := validateSessionWithKratos(config.AdminURL, sessionToken)
+			// Use Public URL for session validation (whoami endpoint)
+			user, err := validateSessionWithKratos(config.PublicURL, sessionToken)
 			if err != nil {
 				// Invalid session, continue as unauthenticated
 				next.ServeHTTP(w, r)
@@ -99,24 +100,32 @@ func extractSessionToken(r *http.Request, cookieName string) (string, error) {
 	return "", errors.New("no session token found")
 }
 
-// validateSessionWithKratos validates a session token with Kratos admin API.
-func validateSessionWithKratos(kratosAdminURL, sessionToken string) (*User, error) {
+// validateSessionWithKratos validates a session token with Kratos public API.
+func validateSessionWithKratos(kratosPublicURL, sessionToken string) (*User, error) {
 	if sessionToken == "" {
 		return nil, errors.New("empty session token")
 	}
 
-	// Make actual HTTP call to Kratos admin API to validate session
+	// Make actual HTTP call to Kratos public API to validate session (whoami)
 	client := &http.Client{Timeout: 10 * time.Second}
-	requestURL := kratosAdminURL + "/admin/identities"
+	requestURL := kratosPublicURL + "/sessions/whoami"
 
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kratos request: %w", err)
 	}
 
-	// Add session token in Authorization header
-	req.Header.Set("Authorization", "Bearer "+sessionToken)
+	// Add session token in X-Session-Token header (standard for Kratos API)
+	req.Header.Set("X-Session-Token", sessionToken)
+
+	// Also add as a cookie - this is often more reliable for Kratos when validating session cookies
+	req.AddCookie(&http.Cookie{
+		Name:  "ory_kratos_session",
+		Value: sessionToken,
+	})
+
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -126,22 +135,28 @@ func validateSessionWithKratos(kratosAdminURL, sessionToken string) (*User, erro
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("kratos returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("kratos returned status %d for /sessions/whoami", resp.StatusCode)
 	}
 
-	// Parse Kratos response
-	var kratosIdentity map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&kratosIdentity); err != nil {
+	// Parse Kratos response (Session object)
+	var session map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
 		return nil, fmt.Errorf("failed to parse Kratos response: %w", err)
 	}
 
-	// Extract user information from response
+	// Extract identity information from session
+	identity, ok := session["identity"].(map[string]any)
+	if !ok {
+		return nil, errors.New("no identity found in session")
+	}
+
+	// Extract user information
 	var userID, email string
-	if id, ok := kratosIdentity["id"].(string); ok {
+	if id, ok := identity["id"].(string); ok {
 		userID = id
 	}
 
-	if traits, ok := kratosIdentity["traits"].(map[string]any); ok {
+	if traits, ok := identity["traits"].(map[string]any); ok {
 		if e, ok := traits["email"].(string); ok {
 			email = e
 		}
