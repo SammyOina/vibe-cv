@@ -58,7 +58,7 @@ func Middleware(config *Config) func(http.Handler) http.Handler {
 			}
 
 			// Try to extract session from cookie or Authorization header
-			sessionToken, err := extractSessionToken(r, config.SessionCookie)
+			sessionToken, isBearer, err := extractSessionToken(r, config.SessionCookie)
 			if err != nil {
 				// No valid session, continue as unauthenticated
 				next.ServeHTTP(w, r)
@@ -68,7 +68,7 @@ func Middleware(config *Config) func(http.Handler) http.Handler {
 
 			// Validate session with Kratos
 			// Use Public URL for session validation (whoami endpoint)
-			user, err := validateSessionWithKratos(config.PublicURL, sessionToken)
+			user, err := validateSessionWithKratos(config.PublicURL, sessionToken, isBearer)
 			if err != nil {
 				// Invalid session, continue as unauthenticated
 				next.ServeHTTP(w, r)
@@ -84,25 +84,25 @@ func Middleware(config *Config) func(http.Handler) http.Handler {
 }
 
 // extractSessionToken extracts session token from cookie or Authorization header.
-func extractSessionToken(r *http.Request, cookieName string) (string, error) {
+func extractSessionToken(r *http.Request, cookieName string) (string, bool, error) {
 	// Try cookies with prefix matching
 	for _, cookie := range r.Cookies() {
 		if strings.HasPrefix(cookie.Name, cookieName) && cookie.Value != "" {
-			return cookie.Value, nil
+			return cookie.Value, false, nil
 		}
 	}
 
 	// Try Authorization header (Bearer token)
 	authHeader := r.Header.Get("Authorization")
 	if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
-		return after, nil
+		return after, true, nil
 	}
 
-	return "", errors.New("no session token found")
+	return "", false, errors.New("no session token found")
 }
 
 // validateSessionWithKratos validates a session token with Kratos public API.
-func validateSessionWithKratos(kratosPublicURL, sessionToken string) (*User, error) {
+func validateSessionWithKratos(kratosPublicURL, sessionToken string, isBearer bool) (*User, error) {
 	if sessionToken == "" {
 		return nil, errors.New("empty session token")
 	}
@@ -116,14 +116,16 @@ func validateSessionWithKratos(kratosPublicURL, sessionToken string) (*User, err
 		return nil, fmt.Errorf("failed to create Kratos request: %w", err)
 	}
 
-	// Add session token in X-Session-Token header (standard for Kratos API)
-	req.Header.Set("X-Session-Token", sessionToken)
-
-	// Also add as a cookie - this is often more reliable for Kratos when validating session cookies
-	req.AddCookie(&http.Cookie{
-		Name:  "ory_kratos_session",
-		Value: sessionToken,
-	})
+	if isBearer {
+		// Add session token in X-Session-Token header (standard for Kratos API)
+		req.Header.Set("X-Session-Token", sessionToken)
+	} else {
+		// Also add as a cookie - this is often more reliable for Kratos when validating session cookies
+		req.AddCookie(&http.Cookie{
+			Name:  "ory_kratos_session",
+			Value: sessionToken,
+		})
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
