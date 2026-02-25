@@ -39,6 +39,7 @@ type LLMConfig struct {
 // CustomizeCVResponse represents the response from CV customization.
 type CustomizeCVResponse struct {
 	Status          string   `json:"status"`
+	VersionID       int      `json:"version_id"`
 	CustomizedCVURL string   `json:"customized_cv_url"`
 	MatchScore      float64  `json:"match_score"`
 	Modifications   []string `json:"modifications"`

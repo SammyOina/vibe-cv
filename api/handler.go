@@ -156,7 +156,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	// Store version with features tracking
 	resultJSON, _ := json.Marshal(result.Modifications)
 	featuresUsed := json.RawMessage(`{"ats_optimization":false,"linkedin_import":false,"premium_llm":true}`)
-	_, err = h.repo.CreateCVVersion(cvRecord.ID, jobDesc, result.ModifiedCV, &result.MatchScore, (*json.RawMessage)(&resultJSON), nil, &featuresUsed)
+	versionRecord, err := h.repo.CreateCVVersion(cvRecord.ID, jobDesc, result.ModifiedCV, &result.MatchScore, (*json.RawMessage)(&resultJSON), nil, &featuresUsed)
 	if err != nil {
 		fmt.Printf("Failed to store version: %v\n", err)
 	}
@@ -170,8 +170,14 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prepare response
+	var versionID int
+	if versionRecord != nil {
+		versionID = versionRecord.ID
+	}
+
 	customizeResp := &types.CustomizeCVResponse{
 		Status:          "success",
+		VersionID:       versionID,
 		CustomizedCVURL: fmt.Sprintf("/outputs/cv-%d.pdf", cvRecord.ID),
 		MatchScore:      result.MatchScore,
 		Modifications:   result.Modifications,
