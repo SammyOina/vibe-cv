@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // LaTeXGenerator generates LaTeX content and compiles to PDF.
@@ -50,23 +51,27 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string) (string
 
 	// Capture both stdout and stderr for better error reporting
 	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to compile LaTeX: %w\nLaTeX output:\n%s", err, string(output))
-	}
 
 	// Return path to generated PDF
 	pdfFile := filepath.Join(lg.outputDir, filename+".pdf")
 
-	// Verify PDF was actually created
-	if _, err := os.Stat(pdfFile); os.IsNotExist(err) {
-		return "", fmt.Errorf("PDF file was not created at %s\nLaTeX output:\n%s", pdfFile, string(output))
+	// Check if PDF was actually created, even if pdflatex returned errors
+	// pdflatex often returns non-zero for warnings/non-fatal errors but still produces output
+	if _, statErr := os.Stat(pdfFile); statErr == nil {
+		return pdfFile, nil
 	}
 
-	return pdfFile, nil
+	// PDF was not created - return the actual error
+	if err != nil {
+		return "", fmt.Errorf("failed to compile LaTeX: %w\nLaTeX output:\n%s", err, string(output))
+	}
+
+	return "", fmt.Errorf("PDF file was not created at %s\nLaTeX output:\n%s", pdfFile, string(output))
 }
 
 // generateLaTeXTemplate generates a basic LaTeX template for CV.
 func generateLaTeXTemplate(cvContent string) string {
+	escaped := escapeLatex(cvContent)
 	template := `\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[margin=0.5in]{geometry}
@@ -88,9 +93,24 @@ func generateLaTeXTemplate(cvContent string) string {
 \begin{document}
 
 \section*{Professional Summary}
-` + cvContent + `
+` + escaped + `
 
 \end{document}`
 
 	return template
+}
+
+func escapeLatex(s string) string {
+	replacer := strings.NewReplacer(
+		"&", `\&`,
+		"%", `\%`,
+		"$", `\$`,
+		"#", `\#`,
+		"_", `\_`,
+		"{", `\{`,
+		"}", `\}`,
+		"~", `\textasciitilde{}`,
+		"^", `\textasciicircum{}`,
+	)
+	return replacer.Replace(s)
 }
