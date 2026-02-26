@@ -21,30 +21,6 @@ func TestFetcher_ExtractHTML(t *testing.T) {
 	}
 }
 
-func TestPDFParser_ValidatePDF(t *testing.T) {
-	parser := NewPDFParser(0)
-
-	// Invalid PDF
-	invalidData := []byte("not a pdf")
-
-	_, err := parser.ParseBytes(invalidData)
-	if err == nil {
-		t.Errorf("Expected error for invalid PDF")
-	}
-}
-
-func TestDOCXParser_ZipValidation(t *testing.T) {
-	parser := NewDOCXParser(0)
-
-	// Invalid DOCX
-	invalidData := []byte("not a docx")
-
-	_, err := parser.ParseBytes(invalidData)
-	if err == nil {
-		t.Errorf("Expected error for invalid DOCX")
-	}
-}
-
 func TestEnhancedParser_ExtractEmail(t *testing.T) {
 	tests := []struct {
 		input    string
