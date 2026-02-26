@@ -112,5 +112,6 @@ func escapeLatex(s string) string {
 		"~", `\textasciitilde{}`,
 		"^", `\textasciicircum{}`,
 	)
+
 	return replacer.Replace(s)
 }
