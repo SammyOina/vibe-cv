@@ -78,7 +78,7 @@ Job Description:
 Keywords:`, jobDescription)
 
 	// Use Customize with empty CV to get a simple completion
-	result, err := a.provider.Customize(ctx, "", prompt, []string{})
+	result, err := a.provider.Customize(ctx, "", prompt, []string{}, "", false)
 	if err != nil {
 		return nil, err
 	}

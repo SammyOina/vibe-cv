@@ -88,7 +88,7 @@ func (jaa *JobAnalyzerAgent) Execute(ctx context.Context, state *AgentState) (*A
 
 	prompt := "Analyze this job description and extract: required skills, preferred skills, and complexity (1-10).\n\nJob: " + state.JobDescription
 
-	resp, err := jaa.llmProvider.Customize(context.Background(), state.CV, prompt, state.AdditionalContext)
+	resp, err := jaa.llmProvider.Customize(context.Background(), state.CV, prompt, state.AdditionalContext, "", false)
 	if err == nil {
 		_ = resp // Use resp if needed
 		newState.RequiredSkills = []string{"Go", "Backend Development", "Cloud"}
@@ -118,7 +118,7 @@ func (coa *CVOptimizerAgent) Execute(ctx context.Context, state *AgentState) (*A
 
 	prompt := fmt.Sprintf("Enhance this CV to match the job description better.\n\nCV: %s\n\nJob: %s", newState.CurrentVersion, state.JobDescription)
 
-	resp, err := coa.llmProvider.Customize(ctx, newState.CurrentVersion, prompt, state.AdditionalContext)
+	resp, err := coa.llmProvider.Customize(ctx, newState.CurrentVersion, prompt, state.AdditionalContext, "", false)
 	if err == nil {
 		newState.CurrentVersion = resp.ModifiedCV
 		newState.MatchScore = resp.MatchScore

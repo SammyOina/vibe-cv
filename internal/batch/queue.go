@@ -149,7 +149,7 @@ func (q *JobQueue) ProcessJob(jobID int) error {
 		}
 
 		// Call LLM provider to customize CV
-		result, err := q.provider.Customize(ctx, cvText, item.JobDescription, []string{})
+		result, err := q.provider.Customize(ctx, cvText, item.JobDescription, []string{}, "", false)
 		if err != nil {
 			// Mark item as failed
 			_ = q.repo.UpdateBatchJobItem(item.ID, "failed", nil, nil)

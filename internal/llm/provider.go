@@ -8,7 +8,7 @@ import "context"
 // Provider is the interface that all LLM providers must implement.
 type Provider interface {
 	// Customize takes a CV and job description and returns a customized CV with metadata
-	Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error)
+	Customize(ctx context.Context, cv, jobDescription string, additionalContext []string, latexTemplate string, isFullLatex bool) (*CustomizationResponse, error)
 	// GetName returns the provider name
 	GetName() string
 }

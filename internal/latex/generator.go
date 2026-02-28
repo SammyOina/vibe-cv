@@ -26,14 +26,18 @@ func NewLaTeXGenerator(outputDir, laTeXPath string) *LaTeXGenerator {
 }
 
 // GeneratePDF generates a PDF from CV content.
-func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string) (string, error) {
+func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullLatex bool) (string, error) {
 	// Ensure output directory exists
 	if err := os.MkdirAll(lg.outputDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Generate LaTeX template
-	latexContent := generateLaTeXTemplate(cvContent)
+	var latexContent string
+	if isFullLatex {
+		latexContent = cvContent // Use LLM's generated LaTeX directly
+	} else {
+		latexContent = generateLaTeXTemplate(cvContent) // Old fallback
+	}
 
 	// Write LaTeX file
 	texFile := filepath.Join(lg.outputDir, filename+".tex")

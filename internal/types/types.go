@@ -10,6 +10,8 @@ type CustomizeCVRequest struct {
 	JobDescription    string        `json:"job_description"`
 	JobDescriptionURL string        `json:"job_description_url,omitempty"` // Phase 2
 	LinkedInProfile   string        `json:"linkedin_profile,omitempty"`    // Phase 2
+	LatexTemplate     string        `json:"latex_template,omitempty"`
+	IsFullLatex       bool          `json:"is_full_latex,omitempty"`
 	AdditionalContext []ContextItem `json:"additional_context,omitempty"`
 	LLMConfig         *LLMConfig    `json:"llm_config,omitempty"`
 	InputSources      []InputSource `json:"input_sources,omitempty"` // Phase 2

@@ -33,8 +33,13 @@ func NewGeminiProvider(ctx context.Context, apiKey, model string) (*GeminiProvid
 }
 
 // Customize customizes a CV using Google Gemini.
-func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription string, additionalContext []string) (*CustomizationResponse, error) {
+func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription string, additionalContext []string, latexTemplate string, isFullLatex bool) (*CustomizationResponse, error) {
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
+
+	if isFullLatex && latexTemplate != "" {
+		prompt += "\n\nYou must generate the complete CV conforming STRICTLY to the following LaTeX template format. Do NOT modify the layout/packages, only rewrite the textual content matching the candidate's specifics. Return the complete, compilable LaTeX code in the 'customized_cv' JSON field."
+		prompt += "\n\nLaTeX Template:\n" + latexTemplate
+	}
 
 	// Create request content
 	contents := make([]*genai.Content, 0, 2)

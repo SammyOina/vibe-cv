@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sammyoina/vibe-cv/internal/analytics"
@@ -146,7 +147,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Customize CV using LLM
-	result, err := h.provider.Customize(r.Context(), cvText, jobDesc, contextStrings)
+	result, err := h.provider.Customize(r.Context(), cvText, jobDesc, contextStrings, req.LatexTemplate, req.IsFullLatex)
 	if err != nil {
 		http.Error(w, `{"error": "customization failed"}`, http.StatusInternalServerError)
 
@@ -163,7 +164,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 
 	// Generate PDF from the customized CV
 	pdfFilename := fmt.Sprintf("cv-%d", cvRecord.ID)
-	_, err = h.texGenerator.GeneratePDF(result.ModifiedCV, pdfFilename)
+	_, err = h.texGenerator.GeneratePDF(result.ModifiedCV, pdfFilename, req.IsFullLatex)
 	if err != nil {
 		// Log the error but don't fail the request - still return success with the customized content
 		fmt.Printf("Failed to generate PDF: %v\n", err)
@@ -479,7 +480,17 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 
 	// Try to generate PDF from the customized CV content
 	pdfFilename := fmt.Sprintf("cv-version-%d", versionID)
-	pdfPath, pdfErr := h.texGenerator.GeneratePDF(version.CustomizedCV, pdfFilename)
+	isFullLatex := false
+	if len(version.CustomizedCV) > 0 {
+		importStrings := []string{"\\documentclass", "sammyoina"}
+		for _, s := range importStrings {
+			if strings.Contains(version.CustomizedCV, s) || strings.Contains(version.CustomizedCV, "\\documentclass") {
+				isFullLatex = true
+				break
+			}
+		}
+	}
+	pdfPath, pdfErr := h.texGenerator.GeneratePDF(version.CustomizedCV, pdfFilename, isFullLatex)
 
 	// If PDF generation succeeds, serve the PDF
 	if pdfErr == nil {
