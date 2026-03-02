@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -96,6 +97,9 @@ func (h *LatestHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/latest/linkedin/import", h.linkedinHandler.ImportLinkedIn)
 	mux.HandleFunc("GET /api/latest/linkedin/imports", h.linkedinHandler.GetLinkedInImports)
 	mux.HandleFunc("GET /api/latest/linkedin/{import_id}", h.linkedinHandler.GetLinkedInImport)
+
+	// Template routes
+	mux.HandleFunc("POST /api/latest/templates/render", h.RenderTemplate)
 }
 
 // CustomizeCV handles the main CV customization endpoint.
@@ -532,4 +536,60 @@ func (h *LatestHandler) Health(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(health); err != nil {
 		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
 	}
+}
+
+// RenderTemplate renders a raw LaTeX template into a PDF.
+func (h *LatestHandler) RenderTemplate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		LatexTemplate string `json:"latex_template"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid request"})
+
+		return
+	}
+
+	if req.LatexTemplate == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "latex_template is required"})
+
+		return
+	}
+
+	// Generate PDF from the raw LaTeX template
+	// Use a unique filename to avoid collisions
+	filename := fmt.Sprintf("preview-%d", time.Now().UnixNano())
+	pdfPath, err := h.texGenerator.GeneratePDF(req.LatexTemplate, filename, true)
+
+	// Clean up temporary files regardless of success
+	defer func() {
+		extensions := []string{".tex", ".aux", ".log", ".pdf"}
+		for _, ext := range extensions {
+			_ = os.Remove(filepath.Join(h.outputDir, filename+ext))
+		}
+	}()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("failed to generate PDF: %v", err)})
+
+		return
+	}
+
+	// Read the generated PDF
+	pdfContent, err := os.ReadFile(pdfPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to read generated PDF"})
+
+		return
+	}
+
+	// Serve the PDF
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"preview.pdf\"")
+	w.Header().Set("Content-Length", strconv.Itoa(len(pdfContent)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(pdfContent)
 }

@@ -120,6 +120,11 @@ type VersionComparison struct {
 	MatchScoreDiff *float64   `json:"match_score_diff,omitempty"`
 }
 
+// RenderTemplateRequest represents a request to render a LaTeX template.
+type RenderTemplateRequest struct {
+	LatexTemplate string `json:"latex_template"`
+}
+
 // CompareVersionsRequest represents a request to compare two versions.
 type CompareVersionsRequest struct {
 	VersionID1 int `json:"version_id_1"`

@@ -188,3 +188,12 @@ func (c *Client) doRequestRaw(ctx context.Context, method, path string, body int
 
 	return data, nil
 }
+
+// RenderTemplatePreview compiles raw LaTeX into a PDF and returns the bytes.
+func (c *Client) RenderTemplatePreview(ctx context.Context, latexContent string, opts ...RequestOption) ([]byte, error) {
+	req := RenderTemplateRequest{
+		LatexTemplate: latexContent,
+	}
+
+	return c.doRequestRaw(ctx, http.MethodPost, "/api/latest/templates/render", req, opts...)
+}
