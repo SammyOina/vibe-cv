@@ -47,14 +47,15 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 		return "", fmt.Errorf("failed to write LaTeX file: %w", err)
 	}
 
-	// Compile LaTeX to PDF
-	cmd := exec.Command(lg.laTeXPath,
-		"-interaction=nonstopmode",
-		"-output-directory="+lg.outputDir,
-		texFile)
-
-	// Capture both stdout and stderr for better error reporting
-	output, err := cmd.CombinedOutput()
+	// Run pdflatex twice to resolve cross-references (hyperref bookmarks, \ref, \pageref)
+	var output []byte
+	for i := 0; i < 2; i++ {
+		cmd := exec.Command(lg.laTeXPath,
+			"-interaction=nonstopmode",
+			"-output-directory="+lg.outputDir,
+			texFile)
+		output, err = cmd.CombinedOutput()
+	}
 
 	// Return path to generated PDF
 	pdfFile := filepath.Join(lg.outputDir, filename+".pdf")
@@ -62,6 +63,16 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 	// Check if PDF was actually created, even if pdflatex returned errors
 	// pdflatex often returns non-zero for warnings/non-fatal errors but still produces output
 	if _, statErr := os.Stat(pdfFile); statErr == nil {
+		// Check if the log file contains critical errors (not just warnings)
+		logFile := filepath.Join(lg.outputDir, filename+".log")
+		if logContent, readErr := os.ReadFile(logFile); readErr == nil {
+			logStr := string(logContent)
+			// These indicate the PDF is likely incomplete/broken
+			if strings.Contains(logStr, "Emergency stop") ||
+				strings.Contains(logStr, "Fatal error") {
+				return "", fmt.Errorf("LaTeX compilation produced a broken PDF: critical errors in log\nLog excerpt:\n%s", logStr[max(0, len(logStr)-500):])
+			}
+		}
 		return pdfFile, nil
 	}
 

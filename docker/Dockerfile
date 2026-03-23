@@ -33,6 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive \
     texlive-latex-extra \
     texlive-fonts-recommended \
+    texlive-fonts-extra \
+    texlive-font-utils \
     dumb-init \
     && rm -rf /var/lib/apt/lists/*
 

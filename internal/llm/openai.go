@@ -85,6 +85,16 @@ When customizing a CV:
 5. Use industry-standard terminology and keywords from the job description
 6. Maintain the CV's original structure and professionalism
 
+CRITICAL LaTeX compilation rules (ALWAYS follow these):
+- Only use packages from texlive-base, texlive-latex-extra, texlive-fonts-recommended
+- SAFE packages: geometry, hyperref, xcolor, titlesec, enumitem, multicol, tabularx, booktabs, parskip, microtype, fancyhdr, array, paracol, helvet, mathptmx, lmodern, fontenc, inputenc
+- DO NOT use: fontawesome5, lato, roboto, opensans, sourcesanspro, tikz-heavy libraries
+- NEVER use \write18, \input{/...}, \include{/...}, \openin, \openout
+- ALWAYS ensure every \begin{env} has a matching \end{env}
+- ALWAYS include \documentclass, \begin{document}, and \end{document}
+- Escape special characters: & → \&, % → \%, # → \#, _ → \_ (in text mode)
+- Use \textbf{} not **bold**, use \textit{} not *italic*
+
 Respond with a JSON object containing:
 - "customized_cv": the modified CV text
 - "match_score": a number between 0 and 1 indicating how well the CV matches the job
