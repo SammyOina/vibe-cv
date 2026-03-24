@@ -39,10 +39,19 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 		latexContent = generateLaTeXTemplate(cvContent) // Old fallback
 	}
 
+	// AGGRESSIVE EXTRACTION: Strip all markdown fences and conversational text.
+	// Ensure pdflatex only ever sees the code from \documentclass to \end{document}
+	docStart := strings.Index(latexContent, "\\documentclass")
+	docEnd := strings.Index(latexContent, "\\end{document}")
+	if docStart != -1 && docEnd != -1 {
+		latexContent = latexContent[docStart : docEnd+len("\\end{document}")]
+	} else if docStart != -1 {
+		latexContent = latexContent[docStart:]
+	}
+
 	// Write LaTeX file
 	texFile := filepath.Join(lg.outputDir, filename+".tex")
-
-	err := os.WriteFile(texFile, []byte(latexContent), 0o644)
+	err := os.WriteFile(texFile, []byte(latexContent), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write LaTeX file: %w", err)
 	}

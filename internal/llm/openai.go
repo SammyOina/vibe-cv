@@ -133,36 +133,42 @@ type responseJSON struct {
 
 // parseResponse parses the LLM response.
 func parseResponse(content string) (string, float64, []string) {
-	// Extract JSON from response (might have additional text)
 	startIdx := strings.Index(content, "{")
 	endIdx := strings.LastIndex(content, "}")
 
 	if startIdx == -1 || endIdx == -1 {
-		// Fallback if JSON parsing fails
 		return content, 0.5, []string{"CV customized"}
 	}
 
 	jsonStr := content[startIdx : endIdx+1]
 
-	// FIX: Escape backslashes that the LLM forgot to escape.
-	// We replace single backslashes with double backslashes, but avoid 
-	// double-escaping things the LLM already properly escaped like \n, \t, or \\
-	re := regexp.MustCompile(`\\([^"\\/bfnrt])`)
+	// 1. Fix unescaped backslashes (EXCEPT valid JSON escapes)
+	re := regexp.MustCompile(`\\([^"\\/bfnrtu])`)
 	jsonStr = re.ReplaceAllString(jsonStr, `\\$1`)
 
-	// Try to parse as JSON
+	// 2. Try to parse into the struct
 	var resp responseJSON
-
 	err := json.Unmarshal([]byte(jsonStr), &resp)
-	if err != nil {
-		// Print the error and the JSON string to logs for debugging
-		fmt.Printf("JSON unmarshal error: %v\nJSON string: %s\n", err, jsonStr)
-		// Fallback to basic string extraction
-		return content, 0.5, []string{"CV customized"}
-	}
 
-	if resp.CustomizedCV == "" {
-		resp.CustomizedCV = content
+	// 3. Robust recovery if field is empty or unmarshal failed
+	if err != nil || resp.CustomizedCV == "" {
+		contentMarker := `"customized_cv":`
+		cIdx := strings.Index(strings.ToLower(jsonStr), strings.ToLower(contentMarker))
+		if cIdx != -1 {
+			valStart := strings.Index(jsonStr[cIdx+len(contentMarker):], "\"")
+			if valStart != -1 {
+				valStart += cIdx + len(contentMarker) + 1
+				valEnd := strings.LastIndex(jsonStr, "\"")
+				if valEnd > valStart {
+					rawVal := jsonStr[valStart:valEnd]
+					return strings.ReplaceAll(rawVal, "\\n", "\n"), 0.8, []string{"Recovered via regex"}
+				}
+			}
+		}
+
+		if resp.CustomizedCV == "" {
+			return content, 0.5, []string{"Manual recovery failed"}
+		}
 	}
 
 	return resp.CustomizedCV, resp.MatchScore, resp.Modifications

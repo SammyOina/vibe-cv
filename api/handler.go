@@ -211,10 +211,17 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Full LaTeX failed after retries. Falling back to plain text template: %v\n", err)
 		
 		// Very naive strip-latex for plain text fallback.
-		plainText := strings.ReplaceAll(result.ModifiedCV, "\\documentclass", "")
-		// Note: A truly robust fallback would remove all LaTeX commands, but for now we compile 
-		// it with isFullLatex=false which wraps it in a standard template anyway. It'll be messy but compilable.
-		_, _ = h.texGenerator.GeneratePDF(plainText, pdfFilename, false)
+		// Fallback: generate a safe PDF with raw text in a verbatim block
+		safeLatex := fmt.Sprintf("\\documentclass[11pt]{article}\n" +
+			"\\usepackage[margin=1in]{geometry}\n" +
+			"\\usepackage{helvet}\n" +
+			"\\begin{document}\n" +
+			"\\section*{CV Content (Rendering Fallback)}\n" +
+			"\\begin{verbatim}\n" +
+			"%s\n" +
+			"\\end{verbatim}\n" +
+			"\\end{document}", strings.ReplaceAll(result.ModifiedCV, "\\", "\\\\"))
+		_, _ = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
 	}
 
 	// Prepare response
@@ -578,8 +585,17 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	if pdfErr != nil {
 		fmt.Printf("DownloadCV Full LaTeX failed after retries. Falling back to plain text template: %v\n", pdfErr)
 		
-		plainText := strings.ReplaceAll(version.CustomizedCV, "\\documentclass", "")
-		pdfPath, pdfErr = h.texGenerator.GeneratePDF(plainText, pdfFilename, false)
+		// Fallback: generate a safe PDF with raw text in a verbatim block
+		safeLatex := fmt.Sprintf("\\documentclass[11pt]{article}\n" +
+			"\\usepackage[margin=1in]{geometry}\n" +
+			"\\usepackage{helvet}\n" +
+			"\\begin{document}\n" +
+			"\\section*{CV Content (Rendering Fallback)}\n" +
+			"\\begin{verbatim}\n" +
+			"%s\n" +
+			"\\end{verbatim}\n" +
+			"\\end{document}", strings.ReplaceAll(version.CustomizedCV, "\\", "\\\\"))
+		pdfPath, pdfErr = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
 	}
 
 	// If PDF generation succeeds, serve the PDF
