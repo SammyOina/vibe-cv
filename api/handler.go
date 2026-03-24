@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sammyoina/vibe-cv/internal/agent"
 	"github.com/sammyoina/vibe-cv/internal/analytics"
 	"github.com/sammyoina/vibe-cv/internal/batch"
 	"github.com/sammyoina/vibe-cv/internal/db"
@@ -37,6 +38,7 @@ type LatestHandler struct {
 	outputDir       string
 	atsHandler      *ATSHandler
 	linkedinHandler *LinkedInHandler
+	compilerAgent   *agent.CompilerAgent
 }
 
 // NewLatestHandler creates a new consolidated handler.
@@ -54,6 +56,7 @@ func NewLatestHandler(provider llm.Provider, repo *db.Repository, authConfig *au
 		outputDir:       outputDir,
 		atsHandler:      NewATSHandler(provider, repo),
 		linkedinHandler: NewLinkedInHandler(repo),
+		compilerAgent:   agent.NewCompilerAgent(&agent.AgentConfig{Name: "Compiler"}, provider),
 	}
 	// Set the LLM provider on the batch queue
 	handler.queue.SetProvider(provider)
@@ -166,12 +169,52 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Failed to store version: %v\n", err)
 	}
 
-	// Generate PDF from the customized CV
+	// Generate PDF with retry fallback logic
 	pdfFilename := fmt.Sprintf("cv-%d", cvRecord.ID)
-	_, err = h.texGenerator.GeneratePDF(result.ModifiedCV, pdfFilename, req.IsFullLatex)
+	finalLatex := result.ModifiedCV
+
+	if req.IsFullLatex {
+		// Attempt up to 3 times to fix LaTeX with the compiler agent
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			_, err = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, true)
+			if err == nil {
+				break // Success!
+			}
+
+			// If it's a compilation error, send it to the Compiler Agent
+			if strings.Contains(err.Error(), "COMPILATION_ERROR") {
+				fmt.Printf("LaTeX compilation failed (attempt %d). Invoking CompilerAgent...\n", i+1)
+				state := &agent.AgentState{
+					CurrentVersion:   finalLatex,
+					CompilationError: err.Error(),
+					JobDescription:   jobDesc,
+					AdditionalContext: contextStrings,
+				}
+				
+				newState, agentErr := h.compilerAgent.Execute(r.Context(), state)
+				if agentErr == nil && newState.FixedLaTeX != "" {
+					finalLatex = newState.FixedLaTeX
+					// Update the result so it gets saved to the database correctly
+					result.ModifiedCV = finalLatex
+					continue
+				}
+			}
+			break
+		}
+	} else {
+		_, err = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, false)
+	}
+
+	// If we exhausted retries and it STILL failed, fallback to plain text generation
 	if err != nil {
-		// Log the error but don't fail the request - still return success with the customized content
-		fmt.Printf("Failed to generate PDF: %v\n", err)
+		fmt.Printf("Full LaTeX failed after retries. Falling back to plain text template: %v\n", err)
+		
+		// Very naive strip-latex for plain text fallback.
+		plainText := strings.ReplaceAll(result.ModifiedCV, "\\documentclass", "")
+		// Note: A truly robust fallback would remove all LaTeX commands, but for now we compile 
+		// it with isFullLatex=false which wraps it in a standard template anyway. It'll be messy but compilable.
+		_, _ = h.texGenerator.GeneratePDF(plainText, pdfFilename, false)
 	}
 
 	// Prepare response
@@ -482,9 +525,13 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Try to generate PDF from the customized CV content
+	// Generate PDF with retry fallback logic
 	pdfFilename := fmt.Sprintf("cv-version-%d", versionID)
+	finalLatex := version.CustomizedCV
 	isFullLatex := false
+	var pdfPath string
+	var pdfErr error
+
 	if len(version.CustomizedCV) > 0 {
 		importStrings := []string{"\\documentclass", "sammyoina"}
 		for _, s := range importStrings {
@@ -494,7 +541,46 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	pdfPath, pdfErr := h.texGenerator.GeneratePDF(version.CustomizedCV, pdfFilename, isFullLatex)
+
+	if isFullLatex {
+		// Attempt up to 3 times to fix LaTeX with the compiler agent
+		maxRetries := 3
+		for i := 0; i < maxRetries; i++ {
+			pdfPath, pdfErr = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, true)
+			if pdfErr == nil {
+				break // Success!
+			}
+
+			// If it's a compilation error, send it to the Compiler Agent
+			if strings.Contains(pdfErr.Error(), "COMPILATION_ERROR") {
+				fmt.Printf("DownloadCV LaTeX compilation failed (attempt %d). Invoking CompilerAgent...\n", i+1)
+				state := &agent.AgentState{
+					CurrentVersion:   finalLatex,
+					CompilationError: pdfErr.Error(),
+					JobDescription:   version.JobDescription,
+					// Additional context is not available during download, but the compiler agent mainly needs the error log anyway
+					AdditionalContext: []string{},
+				}
+				
+				newState, agentErr := h.compilerAgent.Execute(r.Context(), state)
+				if agentErr == nil && newState.FixedLaTeX != "" {
+					finalLatex = newState.FixedLaTeX
+					continue
+				}
+			}
+			break
+		}
+	} else {
+		pdfPath, pdfErr = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, false)
+	}
+
+	// If we exhausted retries and it STILL failed, fallback to plain text generation
+	if pdfErr != nil {
+		fmt.Printf("DownloadCV Full LaTeX failed after retries. Falling back to plain text template: %v\n", pdfErr)
+		
+		plainText := strings.ReplaceAll(version.CustomizedCV, "\\documentclass", "")
+		pdfPath, pdfErr = h.texGenerator.GeneratePDF(plainText, pdfFilename, false)
+	}
 
 	// If PDF generation succeeds, serve the PDF
 	if pdfErr == nil {

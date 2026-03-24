@@ -15,6 +15,7 @@ const (
 	AgentTypeAnalyzer     AgentType = "analyzer"
 	AgentTypeOptimizer    AgentType = "optimizer"
 	AgentTypeValidator    AgentType = "validator"
+	AgentTypeCompiler     AgentType = "compiler"
 	AgentTypeOrchestrator AgentType = "orchestrator"
 )
 
@@ -38,6 +39,8 @@ type AgentState struct {
 	ConversationHistory []Message
 	DecisionHistory     []Decision
 	ToolCalls           []ToolCall
+	CompilationError    string
+	FixedLaTeX          string
 	LastUpdate          time.Time
 }
 

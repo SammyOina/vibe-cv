@@ -60,28 +60,48 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 	// Return path to generated PDF
 	pdfFile := filepath.Join(lg.outputDir, filename+".pdf")
 
+	// Helper to extract log contents safely
+	getLogContents := func() string {
+		logFile := filepath.Join(lg.outputDir, filename+".log")
+		if logContent, readErr := os.ReadFile(logFile); readErr == nil {
+			return string(logContent)
+		}
+		return string(output)
+	}
+
 	// Check if PDF was actually created, even if pdflatex returned errors
 	// pdflatex often returns non-zero for warnings/non-fatal errors but still produces output
 	if _, statErr := os.Stat(pdfFile); statErr == nil {
 		// Check if the log file contains critical errors (not just warnings)
-		logFile := filepath.Join(lg.outputDir, filename+".log")
-		if logContent, readErr := os.ReadFile(logFile); readErr == nil {
-			logStr := string(logContent)
-			// These indicate the PDF is likely incomplete/broken
-			if strings.Contains(logStr, "Emergency stop") ||
-				strings.Contains(logStr, "Fatal error") {
-				return "", fmt.Errorf("LaTeX compilation produced a broken PDF: critical errors in log\nLog excerpt:\n%s", logStr[max(0, len(logStr)-500):])
+		logStr := getLogContents()
+		// These indicate the PDF is likely incomplete/broken
+		if strings.Contains(logStr, "Emergency stop") ||
+			strings.Contains(logStr, "Fatal error") || 
+			strings.Contains(logStr, "!</error>") || 
+			strings.Contains(logStr, "Undefined control sequence") {
+			
+			excerptLen := 1000
+			if len(logStr) < excerptLen {
+				excerptLen = len(logStr)
 			}
+			return "", fmt.Errorf("COMPILATION_ERROR: LaTeX compilation produced a broken PDF: critical errors in log\nLog excerpt:\n%s", logStr[len(logStr)-excerptLen:])
 		}
+		
 		return pdfFile, nil
 	}
 
-	// PDF was not created - return the actual error
-	if err != nil {
-		return "", fmt.Errorf("failed to compile LaTeX: %w\nLaTeX output:\n%s", err, string(output))
+	// PDF was not created - return the actual error alongside the compiler log
+	logStr := getLogContents()
+	excerptLen := 1000
+	if len(logStr) < excerptLen {
+		excerptLen = len(logStr)
 	}
 
-	return "", fmt.Errorf("PDF file was not created at %s\nLaTeX output:\n%s", pdfFile, string(output))
+	if err != nil {
+		return "", fmt.Errorf("COMPILATION_ERROR: failed to compile LaTeX: %w\nLaTeX output/Log:\n%s", err, logStr[len(logStr)-excerptLen:])
+	}
+
+	return "", fmt.Errorf("COMPILATION_ERROR: PDF file was not created at %s\nLaTeX output/Log:\n%s", pdfFile, logStr[len(logStr)-excerptLen:])
 }
 
 // generateLaTeXTemplate generates a basic LaTeX template for CV.

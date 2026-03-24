@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
@@ -98,7 +99,12 @@ CRITICAL LaTeX compilation rules (ALWAYS follow these):
 Respond with a JSON object containing:
 - "customized_cv": the modified CV text
 - "match_score": a number between 0 and 1 indicating how well the CV matches the job
-- "modifications": an array of strings describing the changes made`
+- "modifications": an array of strings describing the changes made
+
+CRITICAL JSON REQUIREMENT:
+Because the customized_cv field contains LaTeX code, you MUST properly escape all backslashes according to JSON format rules.
+For example, you must write "\\documentclass" instead of "\documentclass" and "\\textbf" instead of "\textbf".
+If you fail to escape backslashes, the JSON parser will crash.`
 
 func buildPrompt(cv, jobDescription string, additionalContext []string) string {
 	var contextStr string
@@ -138,11 +144,19 @@ func parseResponse(content string) (string, float64, []string) {
 
 	jsonStr := content[startIdx : endIdx+1]
 
+	// FIX: Escape backslashes that the LLM forgot to escape.
+	// We replace single backslashes with double backslashes, but avoid 
+	// double-escaping things the LLM already properly escaped like \n, \t, or \\
+	re := regexp.MustCompile(`\\([^"\\/bfnrt])`)
+	jsonStr = re.ReplaceAllString(jsonStr, `\\$1`)
+
 	// Try to parse as JSON
 	var resp responseJSON
 
 	err := json.Unmarshal([]byte(jsonStr), &resp)
 	if err != nil {
+		// Print the error and the JSON string to logs for debugging
+		fmt.Printf("JSON unmarshal error: %v\nJSON string: %s\n", err, jsonStr)
 		// Fallback to basic string extraction
 		return content, 0.5, []string{"CV customized"}
 	}
