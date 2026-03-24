@@ -222,7 +222,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 \end{verbatim}
 \end{document}`, result.ModifiedCV) // NO ReplaceAll here!
 
-		_, _ = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
+		_, _ = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, true)
 	}
 
 	// Prepare response
@@ -598,7 +598,7 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 \end{verbatim}
 \end{document}`, version.CustomizedCV) // NO ReplaceAll here!
 
-		pdfPath, pdfErr = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
+		pdfPath, pdfErr = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, true)
 	}
 
 	// If PDF generation succeeds, serve the PDF

@@ -82,16 +82,13 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 		return string(output)
 	}
 
-	// Check if PDF was actually created, even if pdflatex returned errors
-	// pdflatex often returns non-zero for warnings/non-fatal errors but still produces output
+	// Check if PDF was actually created
 	if _, statErr := os.Stat(pdfFile); statErr == nil {
-		// Check if the log file contains critical errors (not just warnings)
 		logStr := getLogContents()
-		// These indicate the PDF is likely incomplete/broken
-		if strings.Contains(logStr, "Emergency stop") ||
-			strings.Contains(logStr, "Fatal error") || 
-			strings.Contains(logStr, "!</error>") || 
-			strings.Contains(logStr, "Undefined control sequence") {
+		
+		// ONLY treat as a fatal error if the PDF is definitely truncated/broken
+		if strings.Contains(logStr, "Emergency stop") || 
+		   (strings.Contains(logStr, "Fatal error") && !strings.Contains(logStr, "Output written on")) {
 			
 			excerptLen := 1000
 			if len(logStr) < excerptLen {
@@ -100,6 +97,7 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 			return "", fmt.Errorf("COMPILATION_ERROR: LaTeX compilation produced a broken PDF: critical errors in log\nLog excerpt:\n%s", logStr[len(logStr)-excerptLen:])
 		}
 		
+		// If pdflatex says "Output written on...", then it's a valid PDF regardless of warnings/aux errors
 		return pdfFile, nil
 	}
 
