@@ -206,21 +206,22 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 		_, err = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, false)
 	}
 
-	// If we exhausted retries and it STILL failed, fallback to plain text generation
+	// If we exhausted retries and it STILL failed, fallback to safe PDF
 	if err != nil {
-		fmt.Printf("Full LaTeX failed after retries. Falling back to plain text template: %v\n", err)
+		fmt.Printf("Full LaTeX failed after retries. Falling back to safe PDF: %v\n", err)
 		
-		// Very naive strip-latex for plain text fallback.
 		// Fallback: generate a safe PDF with raw text in a verbatim block
-		safeLatex := fmt.Sprintf("\\documentclass[11pt]{article}\n" +
-			"\\usepackage[margin=1in]{geometry}\n" +
-			"\\usepackage{helvet}\n" +
-			"\\begin{document}\n" +
-			"\\section*{CV Content (Rendering Fallback)}\n" +
-			"\\begin{verbatim}\n" +
-			"%s\n" +
-			"\\end{verbatim}\n" +
-			"\\end{document}", strings.ReplaceAll(result.ModifiedCV, "\\", "\\\\"))
+		// We use %% to escape the percent character for fmt.Sprintf
+		safeLatex := fmt.Sprintf(`\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{helvet}
+\begin{document}
+\section*{CV Content (Rendering Fallback)}
+\begin{verbatim}
+%s
+\end{verbatim}
+\end{document}`, result.ModifiedCV) // NO ReplaceAll here!
+
 		_, _ = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
 	}
 
@@ -581,20 +582,22 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 		pdfPath, pdfErr = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, false)
 	}
 
-	// If we exhausted retries and it STILL failed, fallback to plain text generation
+	// If we exhausted retries and it STILL failed, fallback to safe PDF
 	if pdfErr != nil {
-		fmt.Printf("DownloadCV Full LaTeX failed after retries. Falling back to plain text template: %v\n", pdfErr)
+		fmt.Printf("DownloadCV Full LaTeX failed after retries. Falling back to safe PDF: %v\n", pdfErr)
 		
 		// Fallback: generate a safe PDF with raw text in a verbatim block
-		safeLatex := fmt.Sprintf("\\documentclass[11pt]{article}\n" +
-			"\\usepackage[margin=1in]{geometry}\n" +
-			"\\usepackage{helvet}\n" +
-			"\\begin{document}\n" +
-			"\\section*{CV Content (Rendering Fallback)}\n" +
-			"\\begin{verbatim}\n" +
-			"%s\n" +
-			"\\end{verbatim}\n" +
-			"\\end{document}", strings.ReplaceAll(version.CustomizedCV, "\\", "\\\\"))
+		// We use %% to escape the percent character for fmt.Sprintf
+		safeLatex := fmt.Sprintf(`\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{helvet}
+\begin{document}
+\section*{CV Content (Rendering Fallback)}
+\begin{verbatim}
+%s
+\end{verbatim}
+\end{document}`, version.CustomizedCV) // NO ReplaceAll here!
+
 		pdfPath, pdfErr = h.texGenerator.GeneratePDF(safeLatex, pdfFilename, false)
 	}
 

@@ -40,11 +40,15 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 	}
 
 	// AGGRESSIVE EXTRACTION: Strip all markdown fences and conversational text.
-	// Ensure pdflatex only ever sees the code from \documentclass to \end{document}
 	docStart := strings.Index(latexContent, "\\documentclass")
 	docEnd := strings.Index(latexContent, "\\end{document}")
 	if docStart != -1 && docEnd != -1 {
 		latexContent = latexContent[docStart : docEnd+len("\\end{document}")]
+		
+		// CLEANUP: Strip trailing manual line breaks before the end of the document
+		// This prevents the "\\\end{document}" error.
+		latexContent = strings.ReplaceAll(latexContent, "\\\\\n\\end{document}", "\n\\end{document}")
+		latexContent = strings.ReplaceAll(latexContent, "\\\\ \n\\end{document}", "\n\\end{document}")
 	} else if docStart != -1 {
 		latexContent = latexContent[docStart:]
 	}
