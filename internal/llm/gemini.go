@@ -37,7 +37,7 @@ func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription strin
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
 	if isFullLatex && latexTemplate != "" {
-		prompt += "\n\nYou must generate the complete CV conforming STRICTLY to the following LaTeX template format. Do NOT modify the layout/packages, only rewrite the textual content matching the candidate's specifics. Return the complete, compilable LaTeX code in the 'customized_cv' JSON field."
+		prompt += "\n\nYou must generate the complete CV conforming STRICTLY to the following LaTeX template format. Do NOT modify the layout/packages, only rewrite the textual content matching the candidate's specifics. Return the complete, compilable LaTeX code AFTER the ---LATEX--- delimiter."
 		prompt += "\n\nLaTeX Template:\n" + latexTemplate
 	}
 

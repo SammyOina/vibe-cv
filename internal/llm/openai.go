@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/sashabaranov/go-openai"
@@ -33,7 +32,7 @@ func (p *OpenAIProvider) Customize(ctx context.Context, cv, jobDescription strin
 	prompt := buildPrompt(cv, jobDescription, additionalContext)
 
 	if isFullLatex && latexTemplate != "" {
-		prompt += "\n\nYou must generate the complete CV conforming STRICTLY to the following LaTeX template format. Do NOT modify the layout/packages, only rewrite the textual content matching the candidate's specifics. Return the complete, compilable LaTeX code in the 'customized_cv' JSON field."
+		prompt += "\n\nYou must generate the complete CV conforming STRICTLY to the following LaTeX template format. Do NOT modify the layout/packages, only rewrite the textual content matching the candidate's specifics. Return the complete, compilable LaTeX code AFTER the ---LATEX--- delimiter."
 		prompt += "\n\nLaTeX Template:\n" + latexTemplate
 	}
 
@@ -96,15 +95,16 @@ CRITICAL LaTeX compilation rules (ALWAYS follow these):
 - Escape special characters: & → \&, % → \%, # → \#, _ → \_ (in text mode)
 - Use \textbf{} not **bold**, use \textit{} not *italic*
 
-Respond with a JSON object containing:
-- "customized_cv": the modified CV text
-- "match_score": a number between 0 and 1 indicating how well the CV matches the job
-- "modifications": an array of strings describing the changes made
+Respond STRICTLY in the following format:
 
-CRITICAL JSON REQUIREMENT:
-Because the customized_cv field contains LaTeX code, you MUST properly escape all backslashes according to JSON format rules.
-For example, you must write "\\documentclass" instead of "\documentclass" and "\\textbf" instead of "\textbf".
-If you fail to escape backslashes, the JSON parser will crash.`
+---METADATA---
+{
+  "match_score": 0.95,
+  "modifications": ["List of changes..."]
+}
+---LATEX---
+\documentclass{...}
+... complete LaTeX code here ...`
 
 func buildPrompt(cv, jobDescription string, additionalContext []string) string {
 	var contextStr string
@@ -133,43 +133,53 @@ type responseJSON struct {
 
 // parseResponse parses the LLM response.
 func parseResponse(content string) (string, float64, []string) {
+	// Try the new robust split format first
+	if strings.Contains(content, "---LATEX---") {
+		parts := strings.Split(content, "---LATEX---")
+		latex := strings.TrimSpace(parts[1])
+
+		// Parse metadata from the first part
+		var score float64 = 0.5
+		var mods []string
+
+		metaStart := strings.Index(parts[0], "{")
+		metaEnd := strings.LastIndex(parts[0], "}")
+		if metaStart != -1 && metaEnd != -1 {
+			var metadata struct {
+				MatchScore    float64  `json:"match_score"`
+				Modifications []string `json:"modifications"`
+			}
+			if err := json.Unmarshal([]byte(parts[0][metaStart:metaEnd+1]), &metadata); err == nil {
+				score = metadata.MatchScore
+				mods = metadata.Modifications
+			}
+		}
+		return latex, score, mods
+	}
+
+	// Fallback for old JSON format or tagged formats
 	startIdx := strings.Index(content, "{")
 	endIdx := strings.LastIndex(content, "}")
 
-	if startIdx == -1 || endIdx == -1 {
-		return content, 0.5, []string{"CV customized"}
-	}
-
-	jsonStr := content[startIdx : endIdx+1]
-
-	// 1. Fix unescaped backslashes (EXCEPT valid JSON escapes)
-	re := regexp.MustCompile(`\\([^"\\/bfnrtu])`)
-	jsonStr = re.ReplaceAllString(jsonStr, `\\$1`)
-
-	// 2. Try to parse into the struct
-	var resp responseJSON
-	err := json.Unmarshal([]byte(jsonStr), &resp)
-
-	// 3. Robust recovery if field is empty or unmarshal failed
-	if err != nil || resp.CustomizedCV == "" {
-		contentMarker := `"customized_cv":`
-		cIdx := strings.Index(strings.ToLower(jsonStr), strings.ToLower(contentMarker))
-		if cIdx != -1 {
-			valStart := strings.Index(jsonStr[cIdx+len(contentMarker):], "\"")
-			if valStart != -1 {
-				valStart += cIdx + len(contentMarker) + 1
-				valEnd := strings.LastIndex(jsonStr, "\"")
-				if valEnd > valStart {
-					rawVal := jsonStr[valStart:valEnd]
-					return strings.ReplaceAll(rawVal, "\\n", "\n"), 0.8, []string{"Recovered via regex"}
-				}
-			}
+	if startIdx != -1 && endIdx != -1 {
+		jsonStr := content[startIdx : endIdx+1]
+		var resp struct {
+			CustomizedCV  string   `json:"customized_cv"`
+			MatchScore    float64  `json:"match_score"`
+			Modifications []string `json:"modifications"`
 		}
 
-		if resp.CustomizedCV == "" {
-			return content, 0.5, []string{"Manual recovery failed"}
+		// If it's valid JSON, let's try to unmarshal it
+		if err := json.Unmarshal([]byte(jsonStr), &resp); err == nil && resp.CustomizedCV != "" {
+			return resp.CustomizedCV, resp.MatchScore, resp.Modifications
 		}
 	}
 
-	return resp.CustomizedCV, resp.MatchScore, resp.Modifications
+	// ULTIMATE FALLBACK: If we see LaTeX markers but everything else failed
+	if strings.Contains(content, "\\documentclass") {
+		docStart := strings.Index(content, "\\documentclass")
+		return content[docStart:], 0.5, []string{"Extracted via fallback"}
+	}
+
+	return content, 0.5, []string{"Failed to parse properly"}
 }
