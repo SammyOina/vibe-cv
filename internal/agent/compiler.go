@@ -31,6 +31,7 @@ func (ca *CompilerAgent) Execute(ctx context.Context, state *AgentState) (*Agent
 	if state.CompilationError == "" {
 		// Nothing to fix
 		newState.FixedLaTeX = state.CurrentVersion
+
 		return newState, nil
 	}
 
@@ -46,9 +47,9 @@ Please analyze the error log and fix the LaTeX code.
 Return ONLY the corrected, full LaTeX code that will compile successfully. Do not include any markdown formatting, explanations, or JSON wrappers. Just the plain LaTeX string.`, state.CurrentVersion, state.CompilationError)
 
 	// We misuse Customize here to just get a raw string response from the LLM based on our prompt.
-	// Since the LLMs currently return JSON by default due to systemPrompt, 
+	// Since the LLMs currently return JSON by default due to systemPrompt,
 	// we will leverage the fact that if json parsing fails, it returns the raw content as CustomizedCV.
-	
+
 	resp, err := ca.llmProvider.Customize(ctx, state.CurrentVersion, prompt, state.AdditionalContext, "", false)
 	if err == nil {
 		newState.FixedLaTeX = resp.ModifiedCV

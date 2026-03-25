@@ -1,3 +1,6 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
 package api
 
 import (
@@ -27,21 +30,21 @@ func TestRenderTemplateHandler(t *testing.T) {
 	handler := NewLatestHandler(provider, nil, nil)
 
 	// Test case: Invalid JSON
-	req, _ := http.NewRequest("POST", "/api/latest/templates/render", bytes.NewBufferString("invalid json"))
+	req, _ := http.NewRequest(http.MethodPost, "/api/latest/templates/render", bytes.NewBufferString("invalid json"))
 	rr := httptest.NewRecorder()
 	handler.RenderTemplate(rr, req)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 
 	// Test case: Missing template
 	body, _ := json.Marshal(map[string]string{"latex_template": ""})
-	req, _ = http.NewRequest("POST", "/api/latest/templates/render", bytes.NewBuffer(body))
+	req, _ = http.NewRequest(http.MethodPost, "/api/latest/templates/render", bytes.NewBuffer(body))
 	rr = httptest.NewRecorder()
 	handler.RenderTemplate(rr, req)
 	assert.Equal(t, http.StatusBadRequest, rr.Code)
 
 	// Test case: Valid request (will fail PDF generation due to missing pdflatex)
 	body, _ = json.Marshal(map[string]string{"latex_template": "\\documentclass{article}\\begin{document}Test\\end{document}"})
-	req, _ = http.NewRequest("POST", "/api/latest/templates/render", bytes.NewBuffer(body))
+	req, _ = http.NewRequest(http.MethodPost, "/api/latest/templates/render", bytes.NewBuffer(body))
 	rr = httptest.NewRecorder()
 	handler.RenderTemplate(rr, req)
 

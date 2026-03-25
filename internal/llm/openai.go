@@ -124,13 +124,6 @@ Original CV:
 Return your response as a valid JSON object with the structure specified in your instructions.`, jobDescription, cv, contextStr)
 }
 
-// responseJSON represents the expected JSON response from the LLM.
-type responseJSON struct {
-	CustomizedCV  string   `json:"customized_cv"`
-	MatchScore    float64  `json:"match_score"`
-	Modifications []string `json:"modifications"`
-}
-
 // parseResponse parses the LLM response.
 func parseResponse(content string) (string, float64, []string) {
 	// Try the new robust split format first
@@ -139,7 +132,7 @@ func parseResponse(content string) (string, float64, []string) {
 		latex := strings.TrimSpace(parts[1])
 
 		// Parse metadata from the first part
-		var score float64 = 0.5
+		score := 0.5
 		var mods []string
 
 		metaStart := strings.Index(parts[0], "{")
@@ -154,6 +147,7 @@ func parseResponse(content string) (string, float64, []string) {
 				mods = metadata.Modifications
 			}
 		}
+
 		return latex, score, mods
 	}
 
@@ -178,6 +172,7 @@ func parseResponse(content string) (string, float64, []string) {
 	// ULTIMATE FALLBACK: If we see LaTeX markers but everything else failed
 	if strings.Contains(content, "\\documentclass") {
 		docStart := strings.Index(content, "\\documentclass")
+
 		return content[docStart:], 0.5, []string{"Extracted via fallback"}
 	}
 

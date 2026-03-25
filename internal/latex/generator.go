@@ -44,7 +44,7 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 	docEnd := strings.Index(latexContent, "\\end{document}")
 	if docStart != -1 && docEnd != -1 {
 		latexContent = latexContent[docStart : docEnd+len("\\end{document}")]
-		
+
 		// CLEANUP: Strip trailing manual line breaks before the end of the document
 		// This prevents the "\\\end{document}" error.
 		latexContent = strings.ReplaceAll(latexContent, "\\\\\n\\end{document}", "\n\\end{document}")
@@ -55,14 +55,14 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 
 	// Write LaTeX file
 	texFile := filepath.Join(lg.outputDir, filename+".tex")
-	err := os.WriteFile(texFile, []byte(latexContent), 0644)
+	err := os.WriteFile(texFile, []byte(latexContent), 0o644)
 	if err != nil {
 		return "", fmt.Errorf("failed to write LaTeX file: %w", err)
 	}
 
 	// Run pdflatex twice to resolve cross-references (hyperref bookmarks, \ref, \pageref)
 	var output []byte
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		cmd := exec.Command(lg.laTeXPath,
 			"-interaction=nonstopmode",
 			"-output-directory="+lg.outputDir,
@@ -79,24 +79,25 @@ func (lg *LaTeXGenerator) GeneratePDF(cvContent string, filename string, isFullL
 		if logContent, readErr := os.ReadFile(logFile); readErr == nil {
 			return string(logContent)
 		}
+
 		return string(output)
 	}
 
 	// Check if PDF was actually created
 	if _, statErr := os.Stat(pdfFile); statErr == nil {
 		logStr := getLogContents()
-		
+
 		// ONLY treat as a fatal error if the PDF is definitely truncated/broken
-		if strings.Contains(logStr, "Emergency stop") || 
-		   (strings.Contains(logStr, "Fatal error") && !strings.Contains(logStr, "Output written on")) {
-			
+		if strings.Contains(logStr, "Emergency stop") ||
+			(strings.Contains(logStr, "Fatal error") && !strings.Contains(logStr, "Output written on")) {
 			excerptLen := 1000
 			if len(logStr) < excerptLen {
 				excerptLen = len(logStr)
 			}
+
 			return "", fmt.Errorf("COMPILATION_ERROR: LaTeX compilation produced a broken PDF: critical errors in log\nLog excerpt:\n%s", logStr[len(logStr)-excerptLen:])
 		}
-		
+
 		// If pdflatex says "Output written on...", then it's a valid PDF regardless of warnings/aux errors
 		return pdfFile, nil
 	}

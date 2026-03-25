@@ -176,7 +176,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	if req.IsFullLatex {
 		// Attempt up to 3 times to fix LaTeX with the compiler agent
 		maxRetries := 3
-		for i := 0; i < maxRetries; i++ {
+		for i := range maxRetries {
 			_, err = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, true)
 			if err == nil {
 				break // Success!
@@ -186,20 +186,22 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(err.Error(), "COMPILATION_ERROR") {
 				fmt.Printf("LaTeX compilation failed (attempt %d). Invoking CompilerAgent...\n", i+1)
 				state := &agent.AgentState{
-					CurrentVersion:   finalLatex,
-					CompilationError: err.Error(),
-					JobDescription:   jobDesc,
+					CurrentVersion:    finalLatex,
+					CompilationError:  err.Error(),
+					JobDescription:    jobDesc,
 					AdditionalContext: contextStrings,
 				}
-				
+
 				newState, agentErr := h.compilerAgent.Execute(r.Context(), state)
 				if agentErr == nil && newState.FixedLaTeX != "" {
 					finalLatex = newState.FixedLaTeX
 					// Update the result so it gets saved to the database correctly
 					result.ModifiedCV = finalLatex
+
 					continue
 				}
 			}
+
 			break
 		}
 	} else {
@@ -209,7 +211,7 @@ func (h *LatestHandler) CustomizeCV(w http.ResponseWriter, r *http.Request) {
 	// If we exhausted retries and it STILL failed, fallback to safe PDF
 	if err != nil {
 		fmt.Printf("Full LaTeX failed after retries. Falling back to safe PDF: %v\n", err)
-		
+
 		// Fallback: generate a safe PDF with raw text in a verbatim block
 		// We use %% to escape the percent character for fmt.Sprintf
 		safeLatex := fmt.Sprintf(`\documentclass[11pt]{article}
@@ -545,6 +547,7 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 		for _, s := range importStrings {
 			if strings.Contains(version.CustomizedCV, s) || strings.Contains(version.CustomizedCV, "\\documentclass") {
 				isFullLatex = true
+
 				break
 			}
 		}
@@ -553,7 +556,7 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	if isFullLatex {
 		// Attempt up to 3 times to fix LaTeX with the compiler agent
 		maxRetries := 3
-		for i := 0; i < maxRetries; i++ {
+		for i := range maxRetries {
 			pdfPath, pdfErr = h.texGenerator.GeneratePDF(finalLatex, pdfFilename, true)
 			if pdfErr == nil {
 				break // Success!
@@ -569,13 +572,15 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 					// Additional context is not available during download, but the compiler agent mainly needs the error log anyway
 					AdditionalContext: []string{},
 				}
-				
+
 				newState, agentErr := h.compilerAgent.Execute(r.Context(), state)
 				if agentErr == nil && newState.FixedLaTeX != "" {
 					finalLatex = newState.FixedLaTeX
+
 					continue
 				}
 			}
+
 			break
 		}
 	} else {
@@ -585,7 +590,7 @@ func (h *LatestHandler) DownloadCV(w http.ResponseWriter, r *http.Request) {
 	// If we exhausted retries and it STILL failed, fallback to safe PDF
 	if pdfErr != nil {
 		fmt.Printf("DownloadCV Full LaTeX failed after retries. Falling back to safe PDF: %v\n", pdfErr)
-		
+
 		// Fallback: generate a safe PDF with raw text in a verbatim block
 		// We use %% to escape the percent character for fmt.Sprintf
 		safeLatex := fmt.Sprintf(`\documentclass[11pt]{article}
