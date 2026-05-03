@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sammyoina/vibe-cv/pkg/latex"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -60,7 +61,7 @@ func (p *OpenAIProvider) Customize(ctx context.Context, cv, jobDescription strin
 	}
 
 	content := resp.Choices[0].Message.Content
-	modifiedCV, matchScore, modifications := parseResponse(content)
+	modifiedCV, matchScore, modifications := parseResponse(content, isFullLatex)
 
 	return &CustomizationResponse{
 		ModifiedCV:    modifiedCV,
@@ -125,16 +126,18 @@ Return your response as a valid JSON object with the structure specified in your
 }
 
 // parseResponse parses the LLM response.
-func parseResponse(content string) (string, float64, []string) {
+func parseResponse(content string, isFullLatex bool) (string, float64, []string) {
+	var modifiedCV string
+	var score float64 = 0.5
+	var mods []string = []string{"Failed to parse properly"}
+	parsed := false
+
 	// Try the new robust split format first
 	if strings.Contains(content, "---LATEX---") {
 		parts := strings.Split(content, "---LATEX---")
-		latex := strings.TrimSpace(parts[1])
+		modifiedCV = strings.TrimSpace(parts[1])
 
 		// Parse metadata from the first part
-		score := 0.5
-		var mods []string
-
 		metaStart := strings.Index(parts[0], "{")
 		metaEnd := strings.LastIndex(parts[0], "}")
 		if metaStart != -1 && metaEnd != -1 {
@@ -147,34 +150,52 @@ func parseResponse(content string) (string, float64, []string) {
 				mods = metadata.Modifications
 			}
 		}
-
-		return latex, score, mods
+		parsed = true
 	}
 
 	// Fallback for old JSON format or tagged formats
-	startIdx := strings.Index(content, "{")
-	endIdx := strings.LastIndex(content, "}")
+	if !parsed {
+		startIdx := strings.Index(content, "{")
+		endIdx := strings.LastIndex(content, "}")
 
-	if startIdx != -1 && endIdx != -1 {
-		jsonStr := content[startIdx : endIdx+1]
-		var resp struct {
-			CustomizedCV  string   `json:"customized_cv"`
-			MatchScore    float64  `json:"match_score"`
-			Modifications []string `json:"modifications"`
-		}
+		if startIdx != -1 && endIdx != -1 {
+			jsonStr := content[startIdx : endIdx+1]
+			var resp struct {
+				CustomizedCV  string   `json:"customized_cv"`
+				MatchScore    float64  `json:"match_score"`
+				Modifications []string `json:"modifications"`
+			}
 
-		// If it's valid JSON, let's try to unmarshal it
-		if err := json.Unmarshal([]byte(jsonStr), &resp); err == nil && resp.CustomizedCV != "" {
-			return resp.CustomizedCV, resp.MatchScore, resp.Modifications
+			// If it's valid JSON, let's try to unmarshal it
+			if err := json.Unmarshal([]byte(jsonStr), &resp); err == nil && resp.CustomizedCV != "" {
+				modifiedCV = resp.CustomizedCV
+				score = resp.MatchScore
+				mods = resp.Modifications
+				parsed = true
+			}
 		}
 	}
 
 	// ULTIMATE FALLBACK: If we see LaTeX markers but everything else failed
-	if strings.Contains(content, "\\documentclass") {
-		docStart := strings.Index(content, "\\documentclass")
-
-		return content[docStart:], 0.5, []string{"Extracted via fallback"}
+	if !parsed {
+		if strings.Contains(content, "\\documentclass") {
+			docStart := strings.Index(content, "\\documentclass")
+			modifiedCV = content[docStart:]
+			score = 0.5
+			mods = []string{"Extracted via fallback"}
+		} else {
+			modifiedCV = content
+		}
 	}
 
-	return content, 0.5, []string{"Failed to parse properly"}
+	// Apply LaTeX sanitization if this is a full LaTeX compilation request
+	if isFullLatex && modifiedCV != "" {
+		if sanitized, err := latex.SanitizeLatex(modifiedCV); err == nil {
+			modifiedCV = sanitized
+		} else if sanitized != "" {
+			modifiedCV = sanitized // Use partially sanitized content even on validation error
+		}
+	}
+
+	return modifiedCV, score, mods
 }

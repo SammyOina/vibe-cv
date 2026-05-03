@@ -87,7 +87,7 @@ func (p *GeminiProvider) Customize(ctx context.Context, cv, jobDescription strin
 		}
 	}
 
-	modifiedCV, matchScore, modifications := parseResponse(content)
+	modifiedCV, matchScore, modifications := parseResponse(content, isFullLatex)
 
 	return &CustomizationResponse{
 		ModifiedCV:    modifiedCV,

@@ -97,7 +97,7 @@ func (p *AnthropicProvider) Customize(ctx context.Context, cv, jobDescription st
 		}
 	}
 
-	modifiedCV, matchScore, modifications := parseResponse(content)
+	modifiedCV, matchScore, modifications := parseResponse(content, isFullLatex)
 
 	return &CustomizationResponse{
 		ModifiedCV:    modifiedCV,
