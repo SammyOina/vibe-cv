@@ -129,8 +129,8 @@ Return your response in the format specified in your instructions.`, jobDescript
 // parseResponse parses the LLM response.
 func parseResponse(content string, isFullLatex bool) (string, float64, []string) {
 	var modifiedCV string
-	var score float64 = 0.5
-	var mods []string = []string{"Failed to parse properly"}
+	score := 0.5
+	mods := []string{"Failed to parse properly"}
 	parsed := false
 
 	// Try the new robust split format first
@@ -184,10 +184,10 @@ func parseResponse(content string, isFullLatex bool) (string, float64, []string)
 					unescaped = strings.ReplaceAll(unescaped, `\n`, "\n")
 					unescaped = strings.ReplaceAll(unescaped, `\t`, "\t")
 					unescaped = strings.ReplaceAll(unescaped, `\r`, "\r")
-					
+
 					modifiedCV = unescaped
 					parsed = true
-					
+
 					reScore := regexp.MustCompile(`"match_score"\s*:\s*([0-9.]+)`)
 					if scoreMatches := reScore.FindStringSubmatch(jsonStr); len(scoreMatches) > 1 {
 						var parsedScore float64
@@ -195,7 +195,7 @@ func parseResponse(content string, isFullLatex bool) (string, float64, []string)
 							score = parsedScore
 						}
 					}
-					
+
 					reMods := regexp.MustCompile(`"modifications"\s*:\s*\[([^\]]*)\]`)
 					if modsMatches := reMods.FindStringSubmatch(jsonStr); len(modsMatches) > 1 {
 						modsListStr := modsMatches[1]

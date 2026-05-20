@@ -4,6 +4,7 @@
 package latex
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -25,7 +26,7 @@ var packageReplacements = map[string]string{
 var dangerousPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\\write18\b`),
 	regexp.MustCompile(`\\immediate\s*\\write18\b`),
-	regexp.MustCompile(`\\input\s*\{[/~]`),  // absolute/home path includes
+	regexp.MustCompile(`\\input\s*\{[/~]`),   // absolute/home path includes
 	regexp.MustCompile(`\\include\s*\{[/~]`), // absolute/home path includes
 	regexp.MustCompile(`\\openin\b`),
 	regexp.MustCompile(`\\openout\b`),
@@ -40,8 +41,10 @@ var markdownFencePattern = regexp.MustCompile("(?m)^\\s*```(?:latex|tex)?\\s*$")
 var usepackagePattern = regexp.MustCompile(`\\usepackage(?:\[([^\]]*)\])?\{([^}]+)\}`)
 
 // environmentPattern matches \begin{env} and \end{env}.
-var beginEnvPattern = regexp.MustCompile(`\\begin\{([^}]+)\}`)
-var endEnvPattern = regexp.MustCompile(`\\end\{([^}]+)\}`)
+var (
+	beginEnvPattern = regexp.MustCompile(`\\begin\{([^}]+)\}`)
+	endEnvPattern   = regexp.MustCompile(`\\end\{([^}]+)\}`)
+)
 
 // SanitizeLatex cleans LLM-generated LaTeX content to maximize compilation success.
 // It strips dangerous commands, replaces unavailable packages, removes markdown
@@ -49,7 +52,7 @@ var endEnvPattern = regexp.MustCompile(`\\end\{([^}]+)\}`)
 // Returns sanitized content and nil error if fixable, or error if unfixable.
 func SanitizeLatex(content string) (string, error) {
 	if content == "" {
-		return "", fmt.Errorf("empty LaTeX content")
+		return "", errors.New("empty LaTeX content")
 	}
 
 	// Step 1: Strip markdown code fences (LLMs often wrap LaTeX in ```latex ... ```)
@@ -95,6 +98,7 @@ func stripDangerousCommands(content string) string {
 	for _, pattern := range dangerousPatterns {
 		content = pattern.ReplaceAllString(content, "% [REMOVED: dangerous command]")
 	}
+
 	return content
 }
 
@@ -129,6 +133,7 @@ func replaceUnavailablePackages(content string) string {
 				}
 				if len(keptPkgs) == 0 {
 					result = append(result, "% "+line+" % [REPLACED: unavailable packages]")
+
 					continue
 				}
 				opts := ""
@@ -136,6 +141,7 @@ func replaceUnavailablePackages(content string) string {
 					opts = "[" + matches[1] + "]"
 				}
 				result = append(result, `\usepackage`+opts+`{`+strings.Join(keptPkgs, ",")+`}`)
+
 				continue
 			}
 
@@ -150,6 +156,7 @@ func replaceUnavailablePackages(content string) string {
 					}
 					result = append(result, `\usepackage`+opts+`{`+replacement+`}`)
 				}
+
 				continue
 			}
 		}
@@ -203,6 +210,7 @@ func escapeUnprotectedAmpersands(content string) string {
 		// Inside alignment environments & is meaningful — leave it alone.
 		if inTabularEnv {
 			result = append(result, line)
+
 			continue
 		}
 
@@ -211,6 +219,7 @@ func escapeUnprotectedAmpersands(content string) string {
 		// \newcommand definitions that happen to contain &.
 		if strings.HasPrefix(trimmed, "\\") || strings.HasPrefix(trimmed, "%") {
 			result = append(result, line)
+
 			continue
 		}
 
@@ -234,20 +243,20 @@ func escapeUnprotectedAmpersands(content string) string {
 // validateStructure checks that the LaTeX has the minimum required structure.
 func validateStructure(content string) error {
 	if !strings.Contains(content, `\documentclass`) {
-		return fmt.Errorf("missing \\documentclass declaration")
+		return errors.New("missing \\documentclass declaration")
 	}
 	if !strings.Contains(content, `\begin{document}`) {
-		return fmt.Errorf("missing \\begin{document}")
+		return errors.New("missing \\begin{document}")
 	}
 	if !strings.Contains(content, `\end{document}`) {
-		return fmt.Errorf("missing \\end{document}")
+		return errors.New("missing \\end{document}")
 	}
 
 	// Check that \begin{document} comes after \documentclass
 	docclassIdx := strings.Index(content, `\documentclass`)
 	beginDocIdx := strings.Index(content, `\begin{document}`)
 	if beginDocIdx < docclassIdx {
-		return fmt.Errorf("\\begin{document} appears before \\documentclass")
+		return errors.New("\\begin{document} appears before \\documentclass")
 	}
 
 	return nil
