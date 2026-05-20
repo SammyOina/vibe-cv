@@ -202,7 +202,7 @@ func parseResponse(content string, isFullLatex bool) (string, float64, []string)
 						reModItem := regexp.MustCompile(`"([^"\\]*(?:\\.[^"\\]*)*)"`)
 						items := reModItem.FindAllStringSubmatch(modsListStr, -1)
 						if len(items) > 0 {
-							mods = nil
+							mods = make([]string, 0, len(items))
 							for _, item := range items {
 								itemEscaped := item[1]
 								itemUnescaped := strings.ReplaceAll(itemEscaped, `\"`, `"`)
@@ -220,7 +220,11 @@ func parseResponse(content string, isFullLatex bool) (string, float64, []string)
 	if !parsed {
 		if strings.Contains(content, "\\documentclass") {
 			docStart := strings.Index(content, "\\documentclass")
-			modifiedCV = content[docStart:]
+			if docStart != -1 {
+				modifiedCV = content[docStart:]
+			} else {
+				modifiedCV = content
+			}
 			score = 0.5
 			mods = []string{"Extracted via fallback"}
 		} else {

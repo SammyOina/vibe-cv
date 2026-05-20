@@ -11,7 +11,7 @@ import (
 )
 
 // Packages that are known to be unavailable and have safe replacements.
-var packageReplacements = map[string]string{
+var packageReplacements = map[string]string{ //nolint:gochecknoglobals
 	"lato":          "helvet",
 	"fontawesome5":  "", // remove — rarely actually used
 	"fontawesome":   "", // remove
@@ -23,7 +23,7 @@ var packageReplacements = map[string]string{
 }
 
 // dangerousCommands are LaTeX commands that could execute arbitrary code.
-var dangerousPatterns = []*regexp.Regexp{
+var dangerousPatterns = []*regexp.Regexp{ //nolint:gochecknoglobals
 	regexp.MustCompile(`\\write18\b`),
 	regexp.MustCompile(`\\immediate\s*\\write18\b`),
 	regexp.MustCompile(`\\input\s*\{[/~]`),   // absolute/home path includes
