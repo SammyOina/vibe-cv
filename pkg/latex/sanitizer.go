@@ -61,12 +61,15 @@ func SanitizeLatex(content string) (string, error) {
 	// Step 3: Replace unavailable packages with safe alternatives
 	content = replaceUnavailablePackages(content)
 
-	// Step 4: Validate basic document structure
+	// Step 4: Escape unprotected & characters in text-mode content
+	content = escapeUnprotectedAmpersands(content)
+
+	// Step 5: Validate basic document structure
 	if err := validateStructure(content); err != nil {
 		return content, fmt.Errorf("invalid LaTeX structure: %w", err)
 	}
 
-	// Step 5: Validate balanced environments
+	// Step 6: Validate balanced environments
 	if err := validateEnvironments(content); err != nil {
 		return content, fmt.Errorf("unbalanced LaTeX environments: %w", err)
 	}
@@ -152,6 +155,77 @@ func replaceUnavailablePackages(content string) string {
 		}
 
 		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// escapeUnprotectedAmpersands escapes bare & characters in text-mode lines.
+// It replaces & not already preceded by \ with \&, while skipping lines
+// inside tabular/math environments where & is a valid alignment character.
+func escapeUnprotectedAmpersands(content string) string {
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+
+	// Environments where & is a valid alignment tab, not a text character.
+	tabularEnvs := map[string]bool{
+		"tabular": true, "tabularx": true, "tabular*": true,
+		"array": true, "longtable": true, "longtabu": true,
+		"tabu": true, "align": true, "align*": true,
+		"aligned": true, "eqnarray": true, "eqnarray*": true,
+		"matrix": true, "pmatrix": true, "bmatrix": true,
+		"vmatrix": true, "Vmatrix": true,
+	}
+
+	inTabularEnv := false
+	tabularEnvDepth := 0
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Track entry/exit of alignment environments.
+		for _, m := range beginEnvPattern.FindAllStringSubmatch(line, -1) {
+			if tabularEnvs[m[1]] {
+				inTabularEnv = true
+				tabularEnvDepth++
+			}
+		}
+		for _, m := range endEnvPattern.FindAllStringSubmatch(line, -1) {
+			if tabularEnvs[m[1]] {
+				tabularEnvDepth--
+				if tabularEnvDepth <= 0 {
+					inTabularEnv = false
+					tabularEnvDepth = 0
+				}
+			}
+		}
+
+		// Inside alignment environments & is meaningful — leave it alone.
+		if inTabularEnv {
+			result = append(result, line)
+			continue
+		}
+
+		// Pure LaTeX command lines and comment lines are unlikely to hold
+		// stray & characters, so skip them to avoid touching things like
+		// \newcommand definitions that happen to contain &.
+		if strings.HasPrefix(trimmed, "\\") || strings.HasPrefix(trimmed, "%") {
+			result = append(result, line)
+			continue
+		}
+
+		// Walk the line rune-by-rune so we can check the preceding character
+		// and avoid double-escaping already-escaped \& sequences.
+		var escaped strings.Builder
+		runes := []rune(line)
+		for i, r := range runes {
+			if r == '&' && (i == 0 || runes[i-1] != '\\') {
+				escaped.WriteString(`\&`)
+			} else {
+				escaped.WriteRune(r)
+			}
+		}
+		result = append(result, escaped.String())
 	}
 
 	return strings.Join(result, "\n")
