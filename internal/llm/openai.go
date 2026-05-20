@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/sammyoina/vibe-cv/pkg/latex"
@@ -122,7 +123,7 @@ Original CV:
 %s
 %s
 
-Return your response as a valid JSON object with the structure specified in your instructions.`, jobDescription, cv, contextStr)
+Return your response in the format specified in your instructions.`, jobDescription, cv, contextStr)
 }
 
 // parseResponse parses the LLM response.
@@ -172,6 +173,45 @@ func parseResponse(content string, isFullLatex bool) (string, float64, []string)
 				score = resp.MatchScore
 				mods = resp.Modifications
 				parsed = true
+			} else {
+				// Regex-based robust fallback for malformed JSON to extract customized_cv
+				// Match "customized_cv"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"
+				re := regexp.MustCompile(`"customized_cv"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"`)
+				if matches := re.FindStringSubmatch(jsonStr); len(matches) > 1 {
+					escapedVal := matches[1]
+					unescaped := strings.ReplaceAll(escapedVal, `\"`, `"`)
+					unescaped = strings.ReplaceAll(unescaped, `\\`, `\`)
+					unescaped = strings.ReplaceAll(unescaped, `\n`, "\n")
+					unescaped = strings.ReplaceAll(unescaped, `\t`, "\t")
+					unescaped = strings.ReplaceAll(unescaped, `\r`, "\r")
+					
+					modifiedCV = unescaped
+					parsed = true
+					
+					reScore := regexp.MustCompile(`"match_score"\s*:\s*([0-9.]+)`)
+					if scoreMatches := reScore.FindStringSubmatch(jsonStr); len(scoreMatches) > 1 {
+						var parsedScore float64
+						if _, err := fmt.Sscanf(scoreMatches[1], "%f", &parsedScore); err == nil {
+							score = parsedScore
+						}
+					}
+					
+					reMods := regexp.MustCompile(`"modifications"\s*:\s*\[([^\]]*)\]`)
+					if modsMatches := reMods.FindStringSubmatch(jsonStr); len(modsMatches) > 1 {
+						modsListStr := modsMatches[1]
+						reModItem := regexp.MustCompile(`"([^"\\]*(?:\\.[^"\\]*)*)"`)
+						items := reModItem.FindAllStringSubmatch(modsListStr, -1)
+						if len(items) > 0 {
+							mods = nil
+							for _, item := range items {
+								itemEscaped := item[1]
+								itemUnescaped := strings.ReplaceAll(itemEscaped, `\"`, `"`)
+								itemUnescaped = strings.ReplaceAll(itemUnescaped, `\\`, `\`)
+								mods = append(mods, itemUnescaped)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
